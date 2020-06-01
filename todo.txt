@@ -1,43 +1,8 @@
-- Send a message from agent to server
+TODO:
+- accept cert using tofu on agent
+- create password and username for agent  (whazza-agent register <server> <username>)
+- manually accept agent on server (whazza-server accept username <pwhash>)
+- use env WHAZZA_DATA_DIR for server generated key, cert and db files
 
-- Server: Read private key from $WHAZZA_KEY / $WHAZZA_KEY_FILE / ./whazza.key
-- Server: If private key does not exist, create it and log it to output
-
-- 'agent init localhost:1234 _public_key_' should generate a default configuration for the agent
-- agent should try to read a private key the same way as server does
-- when first generating the private key, print message to add the public key to servers list of authorized agents
-
-- Server: 'whazza agent add <public_key> <name> [environment...]'
-
-
-environment can be any of:
-  net:internet
-  machine:foo
-
-ping_check:
-  environment: "net:internet"
-  host: "test.se"
-
-http_check:
-  environment: "net:internet"
-  host: "test.se"
-  status_code: any_ok
-  port: 80
-  tls: false
-
-https_check:
-  environment: "net:internet"
-  host: "test.se"
-  status_code: 200
-  port: 443
-  tls: true
-
-cert_expiry_check:
-  environment: "net:internet"
-  host: "test.se"
-  days: 30
-
-disk_check:
-  environment: "machine:homeserver"
-  mountpoint: "/"
-  free: "30%"
+Done
+- generate cert on server

@@ -10,29 +10,30 @@ import (
 
 func Init() {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
+	defer database.Close()
 
 	statement, _ := database.Prepare(`
-	CREATE TABLE IF NOT EXISTS results (
+	CREATE TABLE IF NOT EXISTS checks (
 		id INTEGER PRIMARY KEY,
-		check_id INTEGER,
-		status TEXT,
-		status_msg TEXT,
-		timestamp INTEGER
+		check_type TEXT NOT NULL,
+		namespace TEXT NOT NULL,
+		params_encoded TEXT NOT NULL,
+		interval INTEGER NOT NULL
 	)
 	`)
 	statement.Exec()
 
 	statement, _ = database.Prepare(`
-	CREATE TABLE IF NOT EXISTS checks (
+	CREATE TABLE IF NOT EXISTS results (
 		id INTEGER PRIMARY KEY,
-		check_type TEXT,
-		namespace TEXT,
-		params_encoded TEXT,
-		interval INTEGER
+		check_id INTEGER NOT NULL,
+		status TEXT NOT NULL,
+		status_msg TEXT NOT NULL,
+		timestamp INTEGER NOT NULL,
+		FOREIGN KEY(check_id) REFERENCES checks(id)
 	)
 	`)
 	statement.Exec()
-
 }
 
 func AddCheck(check base.Check) (int64, error) {
@@ -75,8 +76,8 @@ func GetOrCreateCheckId(check base.Check) (int64, error) {
 	}
 }
 
-func AddResult(res base.CheckResult) error {
-	checkId, err := GetOrCreateCheckId(res.Check)
+func AddResult(res base.Result, check base.Check) error {
+	checkId, err := GetOrCreateCheckId(check)
 
 	if err != nil {
 		return err
@@ -96,18 +97,18 @@ func AddResult(res base.CheckResult) error {
 	return nil
 }
 
-func GetCheckStatus(check base.Check) (base.CheckStatus, error) {
+func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error) {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
 
 	checkId, err := GetOrCreateCheckId(check)
 
 	if err != nil {
-		return base.CheckStatus{}, err
+		return
 	}
 
 	var (
-		lastRes, lastGood, lastFail base.CheckResult
+		lastRes, lastGood, lastFail base.Result
 		timestamp                   int64
 	)
 
@@ -119,10 +120,9 @@ func GetCheckStatus(check base.Check) (base.CheckStatus, error) {
 	case err == sql.ErrNoRows:
 		// empty result
 	case err != nil:
-		return base.CheckStatus{}, err
+		return
 	default:
 		lastRes.Timestamp = time.Unix(timestamp, 0)
-		lastRes.Check = check
 	}
 
 	// last good
@@ -133,10 +133,9 @@ func GetCheckStatus(check base.Check) (base.CheckStatus, error) {
 	case err == sql.ErrNoRows:
 		// empty result
 	case err != nil:
-		return base.CheckStatus{}, err
+		return
 	default:
 		lastGood.Timestamp = time.Unix(timestamp, 0)
-		lastGood.Check = check
 	}
 
 	// last fail
@@ -147,22 +146,21 @@ func GetCheckStatus(check base.Check) (base.CheckStatus, error) {
 	case err == sql.ErrNoRows:
 		// empty result
 	case err != nil:
-		return base.CheckStatus{}, err
+		return
 	default:
 		lastFail.Timestamp = time.Unix(timestamp, 0)
-		lastFail.Check = check
 	}
 
-	var result base.CheckResult
-	if (lastRes != base.CheckResult{}) {
+	var result base.Result
+	if (lastRes != base.Result{}) {
 		if lastRes.Timestamp.Add(time.Duration(check.Interval) * time.Second).Before(time.Now()) {
-			result = base.CheckResult{Check: check, Status: "expired", Timestamp: time.Now()}
+			result = base.Result{Status: "expired", Timestamp: time.Now()}
 		} else {
 			result = lastRes
 		}
 	} else {
-		result = base.CheckResult{Check: check, Status: "nodata", Timestamp: time.Now()}
+		result = base.Result{Status: "nodata", Timestamp: time.Now()}
 	}
 
-	return base.CheckStatus{Check: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
+	return base.CheckOverview{Check: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
 }

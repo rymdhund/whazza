@@ -14,7 +14,7 @@ type HttpCheckParams struct {
 	StatusCodes []int
 }
 
-func DoCheck(chk base.Check) base.CheckResult {
+func DoCheck(chk base.Check) base.Result {
 	var status, msg string
 
 	switch chk.CheckType {
@@ -23,13 +23,12 @@ func DoCheck(chk base.Check) base.CheckResult {
 	case "http-up":
 		status, msg = DoHttpCheck(chk)
 	}
-	return base.CheckResult{Check: chk, Status: status, StatusMsg: msg, Timestamp: time.Now()}
+	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }
 
 func DoHttpCheck(chk base.Check) (string, string) {
 	params := chk.CheckParams.(HttpCheckParams)
 	return HttpCheck(params.Host, params.StatusCodes)
-
 }
 
 func HttpCheck(host string, statusCodes []int) (string, string) {
