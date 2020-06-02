@@ -120,7 +120,8 @@ func StartServer() {
 	}
 	fmt.Printf("status: %s\n", overview.Show())
 
-	http.HandleFunc("/", webHandler)
+	http.HandleFunc("/", notFoundHandler)
+	http.HandleFunc("/agent/ping", pingHandler)
 	http.HandleFunc("/agent/result", resultHandler)
 	log.Fatal(http.ListenAndServe(":8080", nil))
 }
@@ -136,6 +137,19 @@ func handleMessage(msg interface{}) {
 		if err != nil {
 			panic(err)
 		}
+	}
+}
+
+func notFoundHandler(w http.ResponseWriter, r *http.Request) {
+	http.Error(w, "404 Not found", http.StatusNotFound)
+}
+
+func pingHandler(w http.ResponseWriter, r *http.Request) {
+	switch r.Method {
+	case "GET":
+		log.Print("Got ping")
+	default:
+		http.Error(w, "405 Method Not allowed", http.StatusMethodNotAllowed)
 	}
 }
 
@@ -163,8 +177,4 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "405 Method Not allowed", http.StatusMethodNotAllowed)
 	}
-}
-
-func webHandler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hi there, I love %s!", r.URL.Path[1:])
 }
