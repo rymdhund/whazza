@@ -17,12 +17,6 @@ func StartServer() {
 		panic(err)
 	}
 
-	fp, err := ReadFingerprint()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Cert fingerprint: %s\n", fp)
-
 	serverdb.Init()
 
 	c := base.Check{CheckType: "http-up", Namespace: "net:google.com", CheckParams: agent.HttpCheckParams{"google.com", 80, nil}, Interval: 900}
@@ -94,4 +88,17 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	default:
 		http.Error(w, "405 Method Not allowed", http.StatusMethodNotAllowed)
 	}
+}
+
+func ShowFingerprint() {
+	err := generateCertIfNotExists()
+	if err != nil {
+		panic(err)
+	}
+
+	fp, err := ReadFingerprint()
+	if err != nil {
+		panic(err)
+	}
+	fmt.Printf("Cert fingerprint: %s\n", fp)
 }
