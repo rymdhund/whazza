@@ -10,6 +10,7 @@ import (
 	"github.com/rymdhund/whazza/internal/agent"
 	"github.com/rymdhund/whazza/internal/base"
 	serverdb "github.com/rymdhund/whazza/internal/server_db"
+	"github.com/rymdhund/whazza/internal/token"
 )
 
 func StartServer() {
@@ -113,14 +114,28 @@ func BasicAuth(handler http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		// This is a dummy check for credentials.
-		if u != "hello" || p != "world" {
+		t := token.Token(p)
+
+		auth, err := serverdb.AuthenticateAgent(u, t)
+		if err != nil {
+			log.Printf("Got error authenticating client: %s", err)
+			rw.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+
+		if !auth {
+			log.Printf("Incorrect login for %s", u)
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		// If required, Context could be updated to include authentication
-		// related data so that it could be used in consequent steps.
 		handler(rw, rq)
+	}
+}
+
+func RegisterAgent(name, tokenHash string) {
+	err := serverdb.SetAgent(name, tokenHash)
+	if err != nil {
+		panic(err)
 	}
 }
