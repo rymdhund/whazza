@@ -1,5 +1,6 @@
 TODO:
-- create password and username for agent  (whazza-agent register <server> <username>)
+- only accept registered agents on server
+- create token and username for agent  (whazza-agent register <server> <username>)
 - manually accept agent on server (whazza-server accept username <pwhash>)
 - use env WHAZZA_DATA_DIR for server generated key, cert and db files
 
@@ -7,3 +8,4 @@ Done
 - generate cert on server
 - accept cert using tofu on agent
 - `whazza fingerprint` command to show cert fingerprint
+- `whazza-agent init ...` to generate config.json

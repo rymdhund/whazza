@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/rymdhund/whazza/internal/agent"
 	"github.com/rymdhund/whazza/internal/base"
@@ -32,8 +33,8 @@ func StartServer() {
 	fmt.Printf("status: %s\n", overview.Show())
 
 	http.HandleFunc("/", notFoundHandler)
-	http.HandleFunc("/agent/ping", pingHandler)
-	http.HandleFunc("/agent/result", resultHandler)
+	http.HandleFunc("/agent/ping", BasicAuth(pingHandler))
+	http.HandleFunc("/agent/result", BasicAuth(resultHandler))
 	log.Fatal(http.ListenAndServeTLS(":4433", "cert.pem", "key.pem", nil))
 }
 
@@ -59,6 +60,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 	switch r.Method {
 	case "GET":
 		log.Print("Got ping")
+		fmt.Fprint(w, "pong")
 	default:
 		http.Error(w, "405 Method Not allowed", http.StatusMethodNotAllowed)
 	}
@@ -101,4 +103,24 @@ func ShowFingerprint() {
 		panic(err)
 	}
 	fmt.Printf("Cert fingerprint: %s\n", fp)
+}
+
+func BasicAuth(handler http.HandlerFunc) http.HandlerFunc {
+	return func(rw http.ResponseWriter, rq *http.Request) {
+		u, p, ok := rq.BasicAuth()
+		if !ok || len(strings.TrimSpace(u)) < 1 || len(strings.TrimSpace(p)) < 1 {
+			rw.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		// This is a dummy check for credentials.
+		if u != "hello" || p != "world" {
+			rw.WriteHeader(http.StatusForbidden)
+			return
+		}
+
+		// If required, Context could be updated to include authentication
+		// related data so that it could be used in consequent steps.
+		handler(rw, rq)
+	}
 }

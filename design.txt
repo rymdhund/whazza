@@ -24,6 +24,16 @@ for example
 
 this might be presented on the server as:
 
+
+
+# Authethication
+
+We use generated tokens for authentication. The server stores sha256 of the tokens. Sha256 is enough and we dont need something more advanced like scrypt since the tokens contain a lot of entropy.
+
+
+
+
+
 """
 net
   www.test.com

@@ -6,10 +6,8 @@ import (
 	"crypto/tls"
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
-	"os"
 	"time"
 )
 
@@ -19,23 +17,6 @@ var (
 	ErrCertNotYetValid    = errors.New("Certificate is not yet valid")
 	ErrBadNumberOfCerts   = errors.New("Bad mumber of certs from server")
 )
-
-func HttpClientFromFile(server string, port int) (*http.Client, error) {
-	fp, exists, err := ReadFingerprint()
-	if err != nil {
-		return nil, err
-	}
-	if !exists {
-		fp, err = FetchFingerprint(server, port)
-		if err != nil {
-			return nil, err
-		}
-		fmt.Printf("Got fingerprint from server: %s\n", fp)
-		fmt.Printf("Verify that it is correct on server by 'whazza fingerprint'\n")
-		WriteFingerprint(fp)
-	}
-	return HttpClient(fp), nil
-}
 
 func HttpClient(fingerprint string) *http.Client {
 	dial := func(network, addr string) (net.Conn, error) {
@@ -104,19 +85,4 @@ func FetchFingerprint(server string, port int) (string, error) {
 	}
 	cert := state.PeerCertificates[0]
 	return getFingerprint(cert.Raw), nil
-}
-
-func ReadFingerprint() (string, bool, error) {
-	dat, err := ioutil.ReadFile("cert.fingerprint")
-	if os.IsNotExist(err) {
-		return "", false, nil
-	}
-	if err != nil {
-		return "", false, err
-	}
-	return string(dat), true, err
-}
-
-func WriteFingerprint(fp string) error {
-	return ioutil.WriteFile("cert.fingerprint", []byte(fp), 0644)
 }
