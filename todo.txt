@@ -1,7 +1,11 @@
 TODO:
+- agent daemon mode
+- agent checks.json config file
 - use env WHAZZA_DATA_DIR for server generated key, cert and db files
 
+
 Done
+- `whazza show` to show health for checks
 - generate cert on server
 - accept cert using tofu on agent
 - `whazza fingerprint` command to show cert fingerprint

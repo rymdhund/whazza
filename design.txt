@@ -31,6 +31,25 @@ this might be presented on the server as:
 We use generated tokens for authentication. The server stores sha256 of the tokens. Sha256 is enough and we dont need something more advanced like scrypt since the tokens contain a lot of entropy.
 
 
+# UI
+
+An exaple of what the overview output could look like for a few checks, the [-] stuff is if we have an interactive ui:
+
+--
+google.com
+  http-up  [
+    host:www.google.com | port:80 | expectedStatus:200
+    lastGood: 12:34 | lastFail: 10:37
+  ]
+  https-up [-]
+
+fooname
+  disk-usage /     [-]
+  disk-usage /var  [-]
+* disk-usage /home [-]
+---
+
+
 
 
 

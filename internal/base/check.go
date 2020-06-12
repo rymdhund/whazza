@@ -26,3 +26,9 @@ func (chk Check) ParamsEncoded() []byte {
 	json.NewEncoder(params).Encode(chk.CheckParams)
 	return params.Bytes()
 }
+
+func DecodeParams(inp []byte) interface{} {
+	var ret interface{}
+	json.NewDecoder(bytes.NewReader(inp)).Decode(&ret)
+	return ret
+}

@@ -13,6 +13,16 @@ import (
 	"github.com/rymdhund/whazza/internal/token"
 )
 
+func Show() {
+	overviews, err := serverdb.GetCheckOverviews()
+	if err != nil {
+		panic(err)
+	}
+	for _, overview := range overviews {
+		fmt.Println(overview.Show())
+	}
+}
+
 func StartServer() {
 	err := generateCertIfNotExists()
 	if err != nil {

@@ -107,6 +107,44 @@ func AddResult(res base.Result, check base.Check) error {
 	return nil
 }
 
+func GetChecks() ([]base.Check, error) {
+	database, _ := sql.Open("sqlite3", "./whazza.db")
+	defer database.Close()
+
+	rows, _ := database.Query("SELECT check_type, namespace, params_encoded, interval FROM checks")
+	defer rows.Close()
+
+	checks := make([]base.Check, 0)
+
+	for rows.Next() {
+		var chk base.Check
+		var params []byte
+		err := rows.Scan(&chk.CheckType, &chk.Namespace, &params, &chk.Interval)
+		if err != nil {
+			return nil, err
+		}
+		chk.CheckParams = base.DecodeParams(params)
+		checks = append(checks, chk)
+	}
+	return checks, nil
+}
+
+func GetCheckOverviews() ([]base.CheckOverview, error) {
+	checks, err := GetChecks()
+	if err != nil {
+		return nil, err
+	}
+	overviews := make([]base.CheckOverview, 0)
+	for _, chk := range checks {
+		o, err := GetCheckOverview(chk)
+		if err != nil {
+			return nil, err
+		}
+		overviews = append(overviews, o)
+	}
+	return overviews, nil
+}
+
 func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error) {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()

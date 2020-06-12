@@ -18,6 +18,8 @@ func main() {
 		wserver.RegisterAgent(args[2], args[3])
 	} else if args[1] == "fingerprint" && len(args) == 2 {
 		wserver.ShowFingerprint()
+	} else if args[1] == "show" && len(args) == 2 {
+		wserver.Show()
 	} else {
 		ShowUsage()
 		os.Exit(1)

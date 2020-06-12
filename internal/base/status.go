@@ -20,12 +20,20 @@ type CheckOverview struct {
 }
 
 func (st *CheckOverview) Show() string {
-	return fmt.Sprintf("%s res: %s, last-res: %s, last-good: %s, last-fail: %s",
-		st.Check.Name(),
+	timestring := func(t time.Time) string {
+		if (t != time.Time{}) {
+			return t.Format(time.RFC3339)
+		} else {
+			return "N/A"
+		}
+	}
+	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s",
+		st.Check.Namespace,
 		st.Result.Status,
-		st.LastReceived.Timestamp.Format("15:04"),
-		st.LastGood.Timestamp.Format("15:04"),
-		st.LastFail.Timestamp.Format("15:04"),
+		st.Check.Name(),
+		timestring(st.LastReceived.Timestamp),
+		timestring(st.LastGood.Timestamp),
+		timestring(st.LastFail.Timestamp),
 	)
 }
 
