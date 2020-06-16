@@ -27,13 +27,14 @@ func (st *CheckOverview) Show() string {
 			return "N/A"
 		}
 	}
-	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s",
+	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s, interval: %d",
 		st.Check.Namespace,
 		st.Result.Status,
 		st.Check.Name(),
 		timestring(st.LastReceived.Timestamp),
 		timestring(st.LastGood.Timestamp),
 		timestring(st.LastFail.Timestamp),
+		st.Check.Interval,
 	)
 }
 
