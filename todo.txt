@@ -1,5 +1,6 @@
 TODO:
 - when a check comes in with a new interval, accept the new interval
+- agent should fetch last run for checks from server
 - use env WHAZZA_DATA_DIR for server generated key, cert and db files
 
 
