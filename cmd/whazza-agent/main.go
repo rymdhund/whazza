@@ -1,22 +1,17 @@
 package main
 
 import (
-	"bytes"
-	"crypto/sha256"
 	"fmt"
-	"io/ioutil"
-	"net/http"
 	"os"
 	"strconv"
 
 	"github.com/rymdhund/whazza/internal/agent"
-	"github.com/rymdhund/whazza/internal/tofu"
 )
+
+const cfgFile = "config.json"
 
 func main() {
 	args := os.Args
-
-	cfgFile := "config.json"
 
 	if len(args) <= 1 {
 		ShowUsage()
@@ -48,18 +43,11 @@ func main() {
 			os.Exit(1)
 		}
 	} else if args[1] == "ping" {
-		cfg, err := agent.ReadConfig(cfgFile)
-		if err != nil {
-			fmt.Printf("Couldn't read config file: %s", err)
-			os.Exit(1)
-		}
-		err = ping(cfg)
-		if err != nil {
-			fmt.Printf("Error pinging server: %s\n", err)
-			os.Exit(1)
-		} else {
-			fmt.Println("Server: Ok")
-		}
+		cfg := readConf()
+		agent.Ping(cfg)
+	} else if args[1] == "run" {
+		cfg := readConf()
+		agent.Run(cfg)
 	} else {
 		ShowUsage()
 		os.Exit(1)
@@ -75,38 +63,11 @@ Where command is one of the following:
 `, os.Args[0])
 }
 
-func ping(cfg agent.Config) error {
-	client := tofu.HttpClient(cfg.ServerCertFingerprint)
-
-	url := fmt.Sprintf("https://%s:%d/agent/ping", cfg.ServerHost, cfg.ServerPort)
-	req, err := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(cfg.AgentName, cfg.AgentToken)
-	resp, err := client.Do(req)
-
+func readConf() agent.Config {
+	cfg, err := agent.ReadConfig(cfgFile)
 	if err != nil {
-		return err
+		fmt.Printf("Couldn't read config file: %s", err)
+		os.Exit(1)
 	}
-	if resp.StatusCode == http.StatusOK {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
-		if string(body) != "pong" {
-			fmt.Errorf("Unexpected response: '%s'", body)
-		}
-		return nil
-	} else if resp.StatusCode == http.StatusForbidden {
-		hash := sha256.Sum256([]byte(cfg.AgentToken))
-
-		hexified := make([][]byte, len(hash))
-		for i, data := range hash {
-			hexified[i] = []byte(fmt.Sprintf("%02X", data))
-		}
-		hashString := string(bytes.Join(hexified, nil))
-
-		return fmt.Errorf("Not authorized. Run `whazza register %s %s` on the server to register this agent.", cfg.AgentName, hashString)
-	} else {
-		return fmt.Errorf("Invalid status: %d", resp.StatusCode)
-	}
+	return cfg
 }

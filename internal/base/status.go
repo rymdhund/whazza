@@ -50,8 +50,8 @@ func (cr CheckResultMsg) Validate() (bool, string) {
 	if cr.Check.CheckType == "" {
 		return false, "Empty type"
 	}
-	if cr.Result.Status == "fail" && cr.Result.Status != "good" {
-		return false, "Invalid status"
+	if cr.Result.Status != "fail" && cr.Result.Status != "good" {
+		return false, fmt.Sprintf("Invalid status: %s", cr.Result.Status)
 	}
 	return true, ""
 }

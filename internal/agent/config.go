@@ -9,6 +9,8 @@ import (
 	"math/big"
 	"os"
 
+	"github.com/rymdhund/whazza/internal/agent/checking"
+	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -69,13 +71,13 @@ func SaveConfig(cfg Config, filename string) error {
 }
 
 func ReadConfig(filename string) (Config, error) {
-	byteValue, err := ioutil.ReadFile(filename)
+	contents, err := ioutil.ReadFile(filename)
 	if err != nil {
 		return Config{}, err
 	}
 
 	var cfg Config
-	err = json.Unmarshal(byteValue, &cfg)
+	err = json.Unmarshal(contents, &cfg)
 	if err != nil {
 		return Config{}, err
 	}
@@ -97,4 +99,70 @@ func generateToken() (string, error) {
 		key[i] = symbols[v.Int64()]
 	}
 	return string(key), nil
+}
+
+func normalizeCheck(chk *base.Check) error {
+	if chk.CheckType == "" {
+		return errors.New("Empty check type")
+	}
+	if chk.Interval <= 0 {
+		return errors.New("Invalid interval")
+	}
+	meta, err := checking.GetCheckMeta(*chk)
+	if err != nil {
+		return err
+	}
+	_, err = meta.ParseParams(*chk)
+	if err != nil {
+		return err
+	}
+	if chk.Namespace == "" {
+		chk.Namespace = meta.DefaultNamespace(*chk)
+	}
+	return nil
+}
+
+// ReadChecksConfig reads check configuration from a file
+func ReadChecksConfig(filename string) ([]base.Check, error) {
+	f, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	var checks []base.Check
+
+	decoder := json.NewDecoder(f)
+	decoder.DisallowUnknownFields()
+	err = decoder.Decode(&checks)
+	if err != nil {
+		return nil, err
+	}
+	for i, _ := range checks {
+		err = normalizeCheck(&checks[i])
+		if err != nil {
+			return nil, err
+		}
+	}
+	return checks, err
+
+	/*
+		var checkList []map[string]interface{}
+		err = json.Unmarshal(contents, &checkList)
+		if err != nil {
+			return nil, err
+		}
+
+		checks := []base.Check{}
+		for _, c := checkList {
+			base.Check{
+				CheckType: c["CheckType"],
+				Namespace: c["Namespace"],
+				Interval: c["Interval"],
+			}
+			c[]
+
+		}
+		return checks, nil
+	*/
 }

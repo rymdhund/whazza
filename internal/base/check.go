@@ -9,7 +9,7 @@ import (
 type Check struct {
 	CheckType   string
 	Namespace   string
-	CheckParams interface{}
+	CheckParams map[string]interface{}
 	Interval    int
 }
 
@@ -27,8 +27,8 @@ func (chk Check) ParamsEncoded() []byte {
 	return params.Bytes()
 }
 
-func DecodeParams(inp []byte) interface{} {
-	var ret interface{}
+func DecodeParams(inp []byte) map[string]interface{} {
+	var ret map[string]interface{}
 	json.NewDecoder(bytes.NewReader(inp)).Decode(&ret)
 	return ret
 }
