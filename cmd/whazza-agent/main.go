@@ -43,11 +43,9 @@ func main() {
 			os.Exit(1)
 		}
 	} else if args[1] == "ping" {
-		cfg := readConf()
-		agent.Ping(cfg)
+		ping()
 	} else if args[1] == "run" {
-		cfg := readConf()
-		agent.Run(cfg)
+		run()
 	} else {
 		ShowUsage()
 		os.Exit(1)
@@ -70,4 +68,15 @@ func readConf() agent.Config {
 		os.Exit(1)
 	}
 	return cfg
+}
+
+func ping() {
+	cfg := readConf()
+	err := agent.Ping(cfg)
+	if err != nil {
+		fmt.Printf("Error pinging server: %s\n", err)
+		os.Exit(1)
+	} else {
+		fmt.Println("Server: Ok")
+	}
 }

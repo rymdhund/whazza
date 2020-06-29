@@ -9,8 +9,8 @@ import (
 	"math/big"
 	"os"
 
-	"github.com/rymdhund/whazza/internal/agent/checking"
 	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/checking"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -108,7 +108,7 @@ func normalizeCheck(chk *base.Check) error {
 	if chk.Interval <= 0 {
 		return errors.New("Invalid interval")
 	}
-	meta, err := checking.GetCheckMeta(*chk)
+	meta, err := checking.GetCheckMeta(chk.CheckType)
 	if err != nil {
 		return err
 	}

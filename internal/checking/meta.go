@@ -12,11 +12,11 @@ type CheckMeta interface {
 	DoCheck(chk base.Check) base.Result
 }
 
-func GetCheckMeta(chk base.Check) (CheckMeta, error) {
-	switch chk.CheckType {
+func GetCheckMeta(checkType string) (CheckMeta, error) {
+	switch checkType {
 	case "http-up":
 		return HttpUpCheckMeta{}, nil
 	default:
-		return nil, fmt.Errorf("Unknown check type: %s", chk.CheckType)
+		return nil, fmt.Errorf("Unknown check type: %s", checkType)
 	}
 }

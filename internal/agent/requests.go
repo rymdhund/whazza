@@ -7,23 +7,12 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
-func Ping(cfg Config) {
-	err := ping(cfg)
-	if err != nil {
-		fmt.Printf("Error pinging server: %s\n", err)
-		os.Exit(1)
-	} else {
-		fmt.Println("Server: Ok")
-	}
-}
-
-func ping(cfg Config) error {
+func Ping(cfg Config) error {
 	client := tofu.HttpClient(cfg.ServerCertFingerprint)
 
 	url := fmt.Sprintf("https://%s:%d/agent/ping", cfg.ServerHost, cfg.ServerPort)
@@ -59,7 +48,7 @@ func ping(cfg Config) error {
 	}
 }
 
-func send(cfg Config, msg base.CheckResultMsg) error {
+func SendCheckResult(cfg Config, msg base.CheckResultMsg) error {
 	client := tofu.HttpClient(cfg.ServerCertFingerprint)
 
 	url := fmt.Sprintf("https://%s:%d/agent/result", cfg.ServerHost, cfg.ServerPort)

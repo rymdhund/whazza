@@ -1,4 +1,4 @@
-package agent
+package main
 
 import (
 	"container/heap"
@@ -7,13 +7,15 @@ import (
 	"os"
 	"time"
 
-	"github.com/rymdhund/whazza/internal/agent/checking"
+	"github.com/rymdhund/whazza/internal/agent"
 	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/checking"
 )
 
+// Priority queue implementation
 type timedCheck struct {
-	time  time.Time
 	check base.Check
+	time  time.Time
 }
 
 type PriorityQueue []*timedCheck
@@ -42,8 +44,9 @@ func (pq *PriorityQueue) Pop() interface{} {
 	return item
 }
 
-func Run(cfg Config) {
-	checks, err := ReadChecksConfig("checks.json")
+func run() {
+	cfg := readConf()
+	checks, err := agent.ReadChecksConfig("checks.json")
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
 		os.Exit(1)
@@ -69,10 +72,10 @@ func Run(cfg Config) {
 		fmt.Printf("running check %+v\n", next.check)
 
 		// TODO: do this in goroutine
-		meta, _ := checking.GetCheckMeta(next.check)
+		meta, _ := checking.GetCheckMeta(next.check.CheckType)
 		res := meta.DoCheck(next.check)
 		checkResult := base.CheckResultMsg{Check: next.check, Result: res}
-		err = send(cfg, checkResult)
+		err = agent.SendCheckResult(cfg, checkResult)
 		if err != nil {
 			log.Printf("Error: couldn't send result: %s", err)
 			// TODO: Try again
