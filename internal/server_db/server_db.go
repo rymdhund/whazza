@@ -9,6 +9,11 @@ import (
 	"github.com/rymdhund/whazza/internal/token"
 )
 
+type checkRow struct {
+	id    int
+	check base.Check
+}
+
 func Init() {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
@@ -61,17 +66,21 @@ func AddCheck(check base.Check) (int64, error) {
 	return id, nil
 }
 
-func GetOrCreateCheckId(check base.Check) (int64, error) {
+func RegisterCheck(check base.Check) (int64, error) {
+	// TODO: this should take agent as well and use as part of the check key
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
 
-	var checkId int64
+	var (
+		checkId  int64
+		interval int
+	)
 	err := database.QueryRow(
-		"SELECT id FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ?",
+		"SELECT id, interval FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ?",
 		check.CheckType,
 		check.Namespace,
 		check.ParamsEncoded(),
-	).Scan(&checkId)
+	).Scan(&checkId, &interval)
 	switch {
 	case err == sql.ErrNoRows:
 		checkId, err = AddCheck(check)
@@ -82,12 +91,23 @@ func GetOrCreateCheckId(check base.Check) (int64, error) {
 	case err != nil:
 		return 0, err
 	default:
-		return checkId, nil
 	}
+
+	// Update interval if changed
+	if interval != check.Interval {
+		statement, _ := database.Prepare("UPDATE checks SET interval = ? WHERE id = ?")
+
+		_, err := statement.Exec(check.Interval, checkId)
+		if err != nil {
+			return checkId, err
+		}
+	}
+
+	return checkId, nil
 }
 
 func AddResult(res base.Result, check base.Check) error {
-	checkId, err := GetOrCreateCheckId(check)
+	checkId, err := RegisterCheck(check)
 
 	if err != nil {
 		return err
@@ -107,36 +127,36 @@ func AddResult(res base.Result, check base.Check) error {
 	return nil
 }
 
-func GetChecks() ([]base.Check, error) {
+func getChecks() ([]checkRow, error) {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
 
-	rows, _ := database.Query("SELECT check_type, namespace, params_encoded, interval FROM checks")
+	rows, _ := database.Query("SELECT id, check_type, namespace, params_encoded, interval FROM checks")
 	defer rows.Close()
 
-	checks := make([]base.Check, 0)
+	checks := make([]checkRow, 0)
 
 	for rows.Next() {
-		var chk base.Check
+		var cr checkRow
 		var params []byte
-		err := rows.Scan(&chk.CheckType, &chk.Namespace, &params, &chk.Interval)
+		err := rows.Scan(&cr.id, &cr.check.CheckType, &cr.check.Namespace, &params, &cr.check.Interval)
 		if err != nil {
 			return nil, err
 		}
-		chk.CheckParams = base.DecodeParams(params)
-		checks = append(checks, chk)
+		cr.check.CheckParams = base.DecodeParams(params)
+		checks = append(checks, cr)
 	}
 	return checks, nil
 }
 
 func GetCheckOverviews() ([]base.CheckOverview, error) {
-	checks, err := GetChecks()
+	checks, err := getChecks()
 	if err != nil {
 		return nil, err
 	}
 	overviews := make([]base.CheckOverview, 0)
-	for _, chk := range checks {
-		o, err := GetCheckOverview(chk)
+	for _, cr := range checks {
+		o, err := getCheckOverview(cr)
 		if err != nil {
 			return nil, err
 		}
@@ -145,15 +165,9 @@ func GetCheckOverviews() ([]base.CheckOverview, error) {
 	return overviews, nil
 }
 
-func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error) {
+func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
-
-	checkId, err := GetOrCreateCheckId(check)
-
-	if err != nil {
-		return
-	}
 
 	var (
 		lastRes, lastGood, lastFail base.Result
@@ -162,7 +176,7 @@ func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error)
 
 	// last res
 	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", checkId,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", cr.id,
 	).Scan(&lastRes.Status, &lastRes.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -175,7 +189,7 @@ func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error)
 
 	// last good
 	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", checkId,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", cr.id,
 	).Scan(&lastGood.Status, &lastGood.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -188,7 +202,7 @@ func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error)
 
 	// last fail
 	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", checkId,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", cr.id,
 	).Scan(&lastFail.Status, &lastFail.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -201,7 +215,7 @@ func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error)
 
 	var result base.Result
 	if (lastRes != base.Result{}) {
-		if lastRes.Timestamp.Add(time.Duration(check.Interval) * time.Second).Before(time.Now()) {
+		if lastRes.Timestamp.Add(time.Duration(cr.check.Interval) * time.Second).Before(time.Now()) {
 			result = base.Result{Status: "expired", Timestamp: time.Now()}
 		} else {
 			result = lastRes
@@ -210,7 +224,7 @@ func GetCheckOverview(check base.Check) (overview base.CheckOverview, err error)
 		result = base.Result{Status: "nodata", Timestamp: time.Now()}
 	}
 
-	return base.CheckOverview{Check: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
+	return base.CheckOverview{Check: cr.check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
 }
 
 func AuthenticateAgent(name string, token token.Token) (bool, error) {
