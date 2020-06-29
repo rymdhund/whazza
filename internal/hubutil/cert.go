@@ -1,4 +1,4 @@
-package wserver
+package hubutil
 
 import (
 	"bytes"
@@ -17,7 +17,7 @@ import (
 	"time"
 )
 
-func generateCertIfNotExists() error {
+func InitCert() error {
 	_, err := os.Stat("key.pem")
 	if !os.IsNotExist(err) {
 		// key exists
@@ -41,7 +41,7 @@ func generateCertIfNotExists() error {
 	template := x509.Certificate{
 		SerialNumber: serialNumber,
 		Subject: pkix.Name{
-			Organization: []string{"Acme Co"},
+			Organization: []string{"whazza"},
 		},
 		NotBefore: notBefore,
 		NotAfter:  notAfter,
@@ -87,7 +87,7 @@ func generateCertIfNotExists() error {
 	return nil
 }
 
-func ReadFingerprint() (string, error) {
+func ReadCertFingerprint() (string, error) {
 	dat, err := ioutil.ReadFile("cert.pem")
 	if err != nil {
 		return "", err

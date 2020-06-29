@@ -1,4 +1,4 @@
-package serverdb
+package persist
 
 import (
 	"database/sql"
@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3"
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/token"
+	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
 type checkRow struct {
@@ -227,7 +227,7 @@ func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 	return base.CheckOverview{Check: cr.check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
 }
 
-func AuthenticateAgent(name string, token token.Token) (bool, error) {
+func AuthenticateAgent(name string, token sectoken.SecToken) (bool, error) {
 	database, _ := sql.Open("sqlite3", "./whazza.db")
 	defer database.Close()
 

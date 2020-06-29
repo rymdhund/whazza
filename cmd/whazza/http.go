@@ -1,4 +1,4 @@
-package wserver
+package main
 
 import (
 	"encoding/json"
@@ -8,31 +8,22 @@ import (
 	"strings"
 
 	"github.com/rymdhund/whazza/internal/base"
-	serverdb "github.com/rymdhund/whazza/internal/server_db"
-	"github.com/rymdhund/whazza/internal/token"
+	"github.com/rymdhund/whazza/internal/hubutil"
+	"github.com/rymdhund/whazza/internal/persist"
+	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
-func Show() {
-	overviews, err := serverdb.GetCheckOverviews()
-	if err != nil {
-		panic(err)
-	}
-	for _, overview := range overviews {
-		fmt.Println(overview.Show())
-	}
-}
-
-func StartServer() {
-	err := generateCertIfNotExists()
+func startServer() {
+	err := hubutil.InitCert()
 	if err != nil {
 		panic(err)
 	}
 
-	serverdb.Init()
+	persist.Init()
 
 	http.HandleFunc("/", notFoundHandler)
-	http.HandleFunc("/agent/ping", BasicAuth(pingHandler))
-	http.HandleFunc("/agent/result", BasicAuth(resultHandler))
+	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
+	http.HandleFunc("/agent/result", basicAuth(resultHandler))
 	log.Fatal(http.ListenAndServeTLS(":4433", "cert.pem", "key.pem", nil))
 }
 
@@ -43,7 +34,7 @@ func handleMessage(msg interface{}) {
 	default:
 		panic(fmt.Sprintf("unexpected type %T", msg))
 	case base.CheckResultMsg:
-		err := serverdb.AddResult(msg.Result, msg.Check)
+		err := persist.AddResult(msg.Result, msg.Check)
 		if err != nil {
 			panic(err)
 		}
@@ -85,7 +76,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "400 Bad Request. Invalid data", http.StatusBadRequest)
 			return
 		}
-		err = serverdb.AddResult(checkResult.Result, checkResult.Check)
+		err = persist.AddResult(checkResult.Result, checkResult.Check)
 		if err != nil {
 			log.Printf("Error saving checkresult: %s", e)
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
@@ -97,20 +88,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func ShowFingerprint() {
-	err := generateCertIfNotExists()
-	if err != nil {
-		panic(err)
-	}
-
-	fp, err := ReadFingerprint()
-	if err != nil {
-		panic(err)
-	}
-	fmt.Printf("Cert fingerprint: %s\n", fp)
-}
-
-func BasicAuth(handler http.HandlerFunc) http.HandlerFunc {
+func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, rq *http.Request) {
 		u, p, ok := rq.BasicAuth()
 		if !ok || len(strings.TrimSpace(u)) < 1 || len(strings.TrimSpace(p)) < 1 {
@@ -118,9 +96,9 @@ func BasicAuth(handler http.HandlerFunc) http.HandlerFunc {
 			return
 		}
 
-		t := token.Token(p)
+		t := sectoken.SecToken(p)
 
-		auth, err := serverdb.AuthenticateAgent(u, t)
+		auth, err := persist.AuthenticateAgent(u, t)
 		if err != nil {
 			log.Printf("Got error authenticating client: %s", err)
 			rw.WriteHeader(http.StatusInternalServerError)
@@ -134,12 +112,5 @@ func BasicAuth(handler http.HandlerFunc) http.HandlerFunc {
 		}
 
 		handler(rw, rq)
-	}
-}
-
-func RegisterAgent(name, tokenHash string) {
-	err := serverdb.SetAgent(name, tokenHash)
-	if err != nil {
-		panic(err)
 	}
 }

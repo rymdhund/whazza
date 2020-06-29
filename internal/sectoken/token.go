@@ -1,4 +1,4 @@
-package token
+package sectoken
 
 import (
 	"bytes"
@@ -6,9 +6,9 @@ import (
 	"fmt"
 )
 
-type Token string
+type SecToken string
 
-func (t Token) Hash() string {
+func (t SecToken) Hash() string {
 	hash := sha256.Sum256([]byte(t))
 
 	hexified := make([][]byte, len(hash))
