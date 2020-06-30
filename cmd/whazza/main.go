@@ -32,7 +32,8 @@ func showUsage() {
 Where command is one of the following:
   run                            Start the server
   fingerprint                    Show the certificate fingerprint
-  register <agent> <token hash>  Register the agent with a hashed token`, os.Args[0])
+  register <agent> <token hash>  Register the agent with a hashed token
+`, os.Args[0])
 }
 
 func show() {

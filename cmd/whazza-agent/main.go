@@ -58,6 +58,7 @@ func ShowUsage() {
 Where command is one of the following:
   init <agentname> <serverhost> <serverport> [server cert fingerprint]   Create config file
   ping                                                                   Ping the configured whazza server
+  run 																	 Run the agent continously
 `, os.Args[0])
 }
 

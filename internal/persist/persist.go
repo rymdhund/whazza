@@ -36,21 +36,33 @@ func (db *DB) Begin() (*Tx, error) {
 }
 
 func (db *DB) Init() error {
-	statement, _ := db.DB.Prepare(`
-	CREATE TABLE IF NOT EXISTS checks (
+	_, err := db.Exec(`
+	CREATE TABLE IF NOT EXISTS agents (
 		id INTEGER PRIMARY KEY,
-		check_type TEXT NOT NULL,
-		namespace TEXT NOT NULL,
-		params_encoded TEXT NOT NULL,
-		interval INTEGER NOT NULL
+		name TEXT UNIQUE NOT NULL,
+		token_hash TEXT NOT NULL
 	)
 	`)
-	_, err := statement.Exec()
 	if err != nil {
 		return err
 	}
 
-	statement, _ = db.DB.Prepare(`
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS checks (
+		id INTEGER PRIMARY KEY,
+		agent_id INTEGER NOT NULL,
+		check_type TEXT NOT NULL,
+		namespace TEXT NOT NULL,
+		params_encoded TEXT NOT NULL,
+		interval INTEGER NOT NULL,
+		FOREIGN KEY(agent_id) REFERENCES agents(id)
+	)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS results (
 		id INTEGER PRIMARY KEY,
 		check_id INTEGER NOT NULL,
@@ -60,31 +72,19 @@ func (db *DB) Init() error {
 		FOREIGN KEY(check_id) REFERENCES checks(id)
 	)
 	`)
-	_, err = statement.Exec()
 	if err != nil {
 		return err
 	}
 
-	statement, _ = db.DB.Prepare(`
-	CREATE TABLE IF NOT EXISTS agents (
-		id INTEGER PRIMARY KEY,
-		name TEXT UNIQUE NOT NULL,
-		token_hash TEXT NOT NULL
-	)
-	`)
-	_, err = statement.Exec()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
-func (tx *Tx) AddCheck(check base.Check) (int64, error) {
+func (tx *Tx) AddCheck(agent AgentModel, check base.Check) (int64, error) {
 	res, err := tx.Exec(
 		`INSERT INTO checks
-		(check_type, namespace, params_encoded, interval)
-		VALUES (?, ?, ?, ?)`,
-		check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
+		(agent_id, check_type, namespace, params_encoded, interval)
+		VALUES (?, ?, ?, ?, ?)`,
+		agent.ID, check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
 	if err != nil {
 		return 0, err
 	}
@@ -93,21 +93,22 @@ func (tx *Tx) AddCheck(check base.Check) (int64, error) {
 	return id, nil
 }
 
-func (tx *Tx) RegisterCheck(check base.Check) (int64, error) {
+func (tx *Tx) RegisterCheck(agent AgentModel, check base.Check) (int64, error) {
 	// TODO: this should take agent as well and use as part of the check key
 	var (
 		checkId  int64
 		interval int
 	)
 	err := tx.QueryRow(
-		"SELECT id, interval FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ?",
+		"SELECT id, interval FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ? AND agent_id = ?",
 		check.CheckType,
 		check.Namespace,
 		check.ParamsEncoded(),
+		agent.ID,
 	).Scan(&checkId, &interval)
 	switch {
 	case err == sql.ErrNoRows:
-		checkId, err = tx.AddCheck(check)
+		checkId, err = tx.AddCheck(agent, check)
 		if err != nil {
 			return 0, err
 		}
@@ -128,9 +129,8 @@ func (tx *Tx) RegisterCheck(check base.Check) (int64, error) {
 	return checkId, nil
 }
 
-func (tx *Tx) AddResult(res base.Result, check base.Check) error {
-	checkId, err := tx.RegisterCheck(check)
-
+func (tx *Tx) AddResult(agent AgentModel, res base.Result, check base.Check) error {
+	checkId, err := tx.RegisterCheck(agent, check)
 	if err != nil {
 		return err
 	}
@@ -146,17 +146,17 @@ func (tx *Tx) AddResult(res base.Result, check base.Check) error {
 	return nil
 }
 
-func (db *DB) AuthenticateAgent(name string, token sectoken.SecToken) (bool, error) {
+func (db *DB) AuthenticateAgent(name string, token sectoken.SecToken) (AgentModel, bool, error) {
 	var id int
 
 	err := db.QueryRow("SELECT id FROM agents WHERE name = ? AND token_hash = ?", name, token.Hash()).Scan(&id)
 	switch {
 	case err == sql.ErrNoRows:
-		return false, nil
+		return AgentModel{}, false, nil
 	case err != nil:
-		return false, err
+		return AgentModel{}, false, err
 	default:
-		return true, nil
+		return AgentModel{id, name}, true, nil
 	}
 }
 
@@ -174,20 +174,22 @@ func (tx *Tx) SaveAgent(name string, tokenHash string) error {
 }
 
 func (db *DB) GetChecks() ([]CheckModel, error) {
-	rows, _ := db.Query("SELECT id, check_type, namespace, params_encoded, interval FROM checks")
+	rows, _ := db.Query(
+		`SELECT c.id, c.check_type, c.namespace, c.params_encoded, interval, a.id, a.name FROM checks c
+		LEFT JOIN agents a ON c.agent_id = a.id`)
 	defer rows.Close()
 
 	checks := make([]CheckModel, 0)
 
 	for rows.Next() {
-		var cr CheckModel
+		var c CheckModel
 		var params []byte
-		err := rows.Scan(&cr.id, &cr.CheckType, &cr.Namespace, &params, &cr.Interval)
+		err := rows.Scan(&c.ID, &c.CheckType, &c.Namespace, &params, &c.Interval, &c.Agent.ID, &c.Agent.Name)
 		if err != nil {
 			return nil, err
 		}
-		cr.CheckParams = base.DecodeParams(params)
-		checks = append(checks, cr)
+		c.CheckParams = base.DecodeParams(params)
+		checks = append(checks, c)
 	}
 	return checks, nil
 }
@@ -200,7 +202,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 
 	// last res
 	err = db.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", check.id,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", check.ID,
 	).Scan(&lastRes.Status, &lastRes.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -213,7 +215,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 
 	// last good
 	err = db.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", check.id,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", check.ID,
 	).Scan(&lastGood.Status, &lastGood.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -226,7 +228,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 
 	// last fail
 	err = db.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", check.id,
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", check.ID,
 	).Scan(&lastFail.Status, &lastFail.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:

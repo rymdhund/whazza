@@ -15,6 +15,8 @@ import (
 
 const dbfile = "./whazza.db"
 
+type AuthHandlerFunc func(http.ResponseWriter, *http.Request, persist.AgentModel)
+
 func startServer() {
 	err := hubutil.InitCert()
 	if err != nil {
@@ -42,7 +44,7 @@ func notFoundHandler(w http.ResponseWriter, r *http.Request) {
 	http.Error(w, "404 Not found", http.StatusNotFound)
 }
 
-func pingHandler(w http.ResponseWriter, r *http.Request) {
+func pingHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentModel) {
 	switch r.Method {
 	case "GET":
 		log.Print("Got ping")
@@ -53,7 +55,7 @@ func pingHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func resultHandler(w http.ResponseWriter, r *http.Request) {
+func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentModel) {
 	switch r.Method {
 	case "POST":
 		log.Print("Got result")
@@ -72,7 +74,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, "400 Bad Request. Invalid data", http.StatusBadRequest)
 			return
 		}
-		err = saveResult(checkResult)
+		err = saveResult(agent, checkResult)
 		if err != nil {
 			log.Printf("Error saving checkresult: %s", e)
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
@@ -84,7 +86,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request) {
 	}
 }
 
-func saveResult(res base.CheckResultMsg) error {
+func saveResult(agent persist.AgentModel, res base.CheckResultMsg) error {
 	db, err := persist.Open(dbfile)
 	if err != nil {
 		return err
@@ -94,7 +96,7 @@ func saveResult(res base.CheckResultMsg) error {
 	if err != nil {
 		return err
 	}
-	err = tx.AddResult(res.Result, res.Check)
+	err = tx.AddResult(agent, res.Result, res.Check)
 	if err != nil {
 		tx.Rollback()
 		return err
@@ -104,7 +106,7 @@ func saveResult(res base.CheckResultMsg) error {
 	return nil
 }
 
-func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
+func basicAuth(handler AuthHandlerFunc) http.HandlerFunc {
 	return func(rw http.ResponseWriter, rq *http.Request) {
 		u, p, ok := rq.BasicAuth()
 		if !ok || len(strings.TrimSpace(u)) < 1 || len(strings.TrimSpace(p)) < 1 {
@@ -114,27 +116,27 @@ func basicAuth(handler http.HandlerFunc) http.HandlerFunc {
 
 		t := sectoken.SecToken(p)
 
-		auth, err := authAgent(u, t)
+		agent, found, err := authAgent(u, t)
 		if err != nil {
 			log.Printf("Got error authenticating client: %s", err)
 			rw.WriteHeader(http.StatusInternalServerError)
 			return
 		}
 
-		if !auth {
+		if !found {
 			log.Printf("Incorrect login for %s", u)
 			rw.WriteHeader(http.StatusForbidden)
 			return
 		}
 
-		handler(rw, rq)
+		handler(rw, rq, agent)
 	}
 }
 
-func authAgent(name string, token sectoken.SecToken) (bool, error) {
+func authAgent(name string, token sectoken.SecToken) (persist.AgentModel, bool, error) {
 	db, err := persist.Open(dbfile)
 	if err != nil {
-		return false, err
+		return persist.AgentModel{}, false, err
 	}
 	defer db.Close()
 	return db.AuthenticateAgent(name, token)

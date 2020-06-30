@@ -7,9 +7,15 @@ import (
 	"github.com/rymdhund/whazza/internal/base"
 )
 
+type AgentModel struct {
+	ID   int
+	Name string
+}
+
 type CheckModel struct {
-	id int
+	ID int
 	base.Check
+	Agent AgentModel
 }
 
 type CheckOverview struct {
