@@ -30,13 +30,18 @@ func main() {
 func showUsage() {
 	fmt.Printf(`usage: %s <command> [<args>]
 Where command is one of the following:
-  run                           Start the server
-  fingerprint                   Show the certificate fingerprint
-  regiser <agent> <token hash>  Register the agent with a hashed token`, os.Args[0])
+  run                            Start the server
+  fingerprint                    Show the certificate fingerprint
+  register <agent> <token hash>  Register the agent with a hashed token`, os.Args[0])
 }
 
 func show() {
-	overviews, err := persist.GetCheckOverviews()
+	db, err := persist.Open(dbfile)
+	if err != nil {
+		panic(err)
+	}
+	defer db.Close()
+	overviews, err := db.GetCheckOverviews()
 	if err != nil {
 		panic(err)
 	}
@@ -59,8 +64,20 @@ func showFingerprint() {
 }
 
 func registerAgent(name, tokenHash string) {
-	err := persist.SetAgent(name, tokenHash)
+	db, err := persist.Open(dbfile)
 	if err != nil {
 		panic(err)
+	}
+	defer db.Close()
+	tx, err := db.Begin()
+	if err != nil {
+		panic(err)
+	}
+	err = tx.SaveAgent(name, tokenHash)
+	if err != nil {
+		tx.Rollback()
+		panic(err)
+	} else {
+		tx.Commit()
 	}
 }

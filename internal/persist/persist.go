@@ -9,16 +9,34 @@ import (
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
-type checkRow struct {
-	id    int
-	check base.Check
+type DB struct {
+	*sql.DB
 }
 
-func Init() {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
+type Tx struct {
+	*sql.Tx
+}
 
-	statement, _ := database.Prepare(`
+// Open returns a DB reference for a data source.
+func Open(filename string) (*DB, error) {
+	db, err := sql.Open("sqlite3", filename)
+	if err != nil {
+		return nil, err
+	}
+	return &DB{db}, nil
+}
+
+// Begin starts an returns a new transaction.
+func (db *DB) Begin() (*Tx, error) {
+	tx, err := db.DB.Begin()
+	if err != nil {
+		return nil, err
+	}
+	return &Tx{tx}, nil
+}
+
+func (db *DB) Init() error {
+	statement, _ := db.DB.Prepare(`
 	CREATE TABLE IF NOT EXISTS checks (
 		id INTEGER PRIMARY KEY,
 		check_type TEXT NOT NULL,
@@ -27,9 +45,12 @@ func Init() {
 		interval INTEGER NOT NULL
 	)
 	`)
-	statement.Exec()
+	_, err := statement.Exec()
+	if err != nil {
+		return err
+	}
 
-	statement, _ = database.Prepare(`
+	statement, _ = db.DB.Prepare(`
 	CREATE TABLE IF NOT EXISTS results (
 		id INTEGER PRIMARY KEY,
 		check_id INTEGER NOT NULL,
@@ -39,25 +60,31 @@ func Init() {
 		FOREIGN KEY(check_id) REFERENCES checks(id)
 	)
 	`)
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
 
-	statement, _ = database.Prepare(`
+	statement, _ = db.DB.Prepare(`
 	CREATE TABLE IF NOT EXISTS agents (
 		id INTEGER PRIMARY KEY,
 		name TEXT UNIQUE NOT NULL,
 		token_hash TEXT NOT NULL
 	)
 	`)
-	statement.Exec()
+	_, err = statement.Exec()
+	if err != nil {
+		return err
+	}
+	return nil
 }
 
-func AddCheck(check base.Check) (int64, error) {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	statement, _ := database.Prepare(
+func (tx *Tx) AddCheck(check base.Check) (int64, error) {
+	res, err := tx.Exec(
 		`INSERT INTO checks
 		(check_type, namespace, params_encoded, interval)
-		VALUES (?, ?, ?, ?)`)
-	res, err := statement.Exec(check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
+		VALUES (?, ?, ?, ?)`,
+		check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
 	if err != nil {
 		return 0, err
 	}
@@ -66,16 +93,13 @@ func AddCheck(check base.Check) (int64, error) {
 	return id, nil
 }
 
-func RegisterCheck(check base.Check) (int64, error) {
+func (tx *Tx) RegisterCheck(check base.Check) (int64, error) {
 	// TODO: this should take agent as well and use as part of the check key
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
-
 	var (
 		checkId  int64
 		interval int
 	)
-	err := database.QueryRow(
+	err := tx.QueryRow(
 		"SELECT id, interval FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ?",
 		check.CheckType,
 		check.Namespace,
@@ -83,7 +107,7 @@ func RegisterCheck(check base.Check) (int64, error) {
 	).Scan(&checkId, &interval)
 	switch {
 	case err == sql.ErrNoRows:
-		checkId, err = AddCheck(check)
+		checkId, err = tx.AddCheck(check)
 		if err != nil {
 			return 0, err
 		}
@@ -95,9 +119,7 @@ func RegisterCheck(check base.Check) (int64, error) {
 
 	// Update interval if changed
 	if interval != check.Interval {
-		statement, _ := database.Prepare("UPDATE checks SET interval = ? WHERE id = ?")
-
-		_, err := statement.Exec(check.Interval, checkId)
+		_, err := tx.Exec("UPDATE checks SET interval = ? WHERE id = ?", check.Interval, checkId)
 		if err != nil {
 			return checkId, err
 		}
@@ -106,77 +128,79 @@ func RegisterCheck(check base.Check) (int64, error) {
 	return checkId, nil
 }
 
-func AddResult(res base.Result, check base.Check) error {
-	checkId, err := RegisterCheck(check)
+func (tx *Tx) AddResult(res base.Result, check base.Check) error {
+	checkId, err := tx.RegisterCheck(check)
 
 	if err != nil {
 		return err
 	}
 
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
-
-	statement, _ := database.Prepare(
+	_, err = tx.Exec(
 		`INSERT INTO results
 		(check_id, status, status_msg, timestamp)
-		VALUES (?, ?, ?, ?)`)
-	_, err = statement.Exec(checkId, res.Status, res.StatusMsg, res.Timestamp.Unix())
+		VALUES (?, ?, ?, ?)`,
+		checkId, res.Status, res.StatusMsg, res.Timestamp.Unix())
 	if err != nil {
 		return err
 	}
 	return nil
 }
 
-func getChecks() ([]checkRow, error) {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
+func (db *DB) AuthenticateAgent(name string, token sectoken.SecToken) (bool, error) {
+	var id int
 
-	rows, _ := database.Query("SELECT id, check_type, namespace, params_encoded, interval FROM checks")
+	err := db.QueryRow("SELECT id FROM agents WHERE name = ? AND token_hash = ?", name, token.Hash()).Scan(&id)
+	switch {
+	case err == sql.ErrNoRows:
+		return false, nil
+	case err != nil:
+		return false, err
+	default:
+		return true, nil
+	}
+}
+
+func (tx *Tx) SaveAgent(name string, tokenHash string) error {
+	_, err := tx.Exec(
+		`INSERT INTO agents
+		(name, token_hash)
+		VALUES (?, ?)
+		ON CONFLICT(name) DO UPDATE SET token_hash = ?`,
+		name, tokenHash, tokenHash)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func (db *DB) GetChecks() ([]CheckModel, error) {
+	rows, _ := db.Query("SELECT id, check_type, namespace, params_encoded, interval FROM checks")
 	defer rows.Close()
 
-	checks := make([]checkRow, 0)
+	checks := make([]CheckModel, 0)
 
 	for rows.Next() {
-		var cr checkRow
+		var cr CheckModel
 		var params []byte
-		err := rows.Scan(&cr.id, &cr.check.CheckType, &cr.check.Namespace, &params, &cr.check.Interval)
+		err := rows.Scan(&cr.id, &cr.CheckType, &cr.Namespace, &params, &cr.Interval)
 		if err != nil {
 			return nil, err
 		}
-		cr.check.CheckParams = base.DecodeParams(params)
+		cr.CheckParams = base.DecodeParams(params)
 		checks = append(checks, cr)
 	}
 	return checks, nil
 }
 
-func GetCheckOverviews() ([]base.CheckOverview, error) {
-	checks, err := getChecks()
-	if err != nil {
-		return nil, err
-	}
-	overviews := make([]base.CheckOverview, 0)
-	for _, cr := range checks {
-		o, err := getCheckOverview(cr)
-		if err != nil {
-			return nil, err
-		}
-		overviews = append(overviews, o)
-	}
-	return overviews, nil
-}
-
-func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
-
+func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err error) {
 	var (
 		lastRes, lastGood, lastFail base.Result
 		timestamp                   int64
 	)
 
 	// last res
-	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", cr.id,
+	err = db.QueryRow(
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", check.id,
 	).Scan(&lastRes.Status, &lastRes.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -188,8 +212,8 @@ func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 	}
 
 	// last good
-	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", cr.id,
+	err = db.QueryRow(
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", check.id,
 	).Scan(&lastGood.Status, &lastGood.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -201,8 +225,8 @@ func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 	}
 
 	// last fail
-	err = database.QueryRow(
-		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", cr.id,
+	err = db.QueryRow(
+		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", check.id,
 	).Scan(&lastFail.Status, &lastFail.StatusMsg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
@@ -215,7 +239,7 @@ func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 
 	var result base.Result
 	if (lastRes != base.Result{}) {
-		if lastRes.Timestamp.Add(time.Duration(cr.check.Interval) * time.Second).Before(time.Now()) {
+		if lastRes.Timestamp.Add(time.Duration(check.Interval) * time.Second).Before(time.Now()) {
 			result = base.Result{Status: "expired", Timestamp: time.Now()}
 		} else {
 			result = lastRes
@@ -224,39 +248,21 @@ func getCheckOverview(cr checkRow) (overview base.CheckOverview, err error) {
 		result = base.Result{Status: "nodata", Timestamp: time.Now()}
 	}
 
-	return base.CheckOverview{Check: cr.check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
+	return CheckOverview{Check: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
 }
 
-func AuthenticateAgent(name string, token sectoken.SecToken) (bool, error) {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
-
-	var id int
-
-	err := database.QueryRow("SELECT id FROM agents WHERE name = ? AND token_hash = ?", name, token.Hash()).Scan(&id)
-	switch {
-	case err == sql.ErrNoRows:
-		return false, nil
-	case err != nil:
-		return false, err
-	default:
-		return true, nil
-	}
-
-}
-
-func SetAgent(name string, tokenHash string) error {
-	database, _ := sql.Open("sqlite3", "./whazza.db")
-	defer database.Close()
-
-	statement, _ := database.Prepare(
-		`INSERT INTO agents
-		(name, token_hash)
-		VALUES (?, ?)
-		ON CONFLICT(name) DO UPDATE SET token_hash = ?`)
-	_, err := statement.Exec(name, tokenHash, tokenHash)
+func (db *DB) GetCheckOverviews() ([]CheckOverview, error) {
+	checks, err := db.GetChecks()
 	if err != nil {
-		return err
+		return nil, err
 	}
-	return nil
+	overviews := make([]CheckOverview, 0)
+	for _, cr := range checks {
+		o, err := db.GetCheckOverview(cr)
+		if err != nil {
+			return nil, err
+		}
+		overviews = append(overviews, o)
+	}
+	return overviews, nil
 }

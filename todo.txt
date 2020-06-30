@@ -1,16 +1,17 @@
 TODO:
-- when a check comes in with a new interval, accept the new interval
-- agent should fetch last run for checks from server
-- use env WHAZZA_DATA_DIR for server generated key, cert and db files
+- use (agent, checkType, checkParams) as key for checks
+- agent should fetch last run for checks from hub
+- use env WHAZZA_DATA_DIR for hub generated key, cert and db files
 
 
 Done
+- when a check comes in with a new interval, accept the new interval
 - agent daemon mode
 - agent checks.json config file
 - `whazza show` to show health for checks
-- generate cert on server
+- generate cert on hub
 - accept cert using tofu on agent
 - `whazza fingerprint` command to show cert fingerprint
 - `whazza-agent init ...` to generate config.json
-- accept agent on server (whazza register username <token-hash>)
-- only accept registered agents on server
+- accept agent on hub (whazza register username <token-hash>)
+- only accept registered agents on hub
