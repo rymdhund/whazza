@@ -8,10 +8,8 @@ Hub notifies email on errors
 When hub receives new check from an agent it will keep tracking that (agent, check) configuration
 When the hub does not receive a check within the expected timeframe it will count the (agent, check) combination as expired
 When an agent changes the interval for a check, the hub accepts the new interval. (it might notify and keep in event log)
-An agent might keep track of what checks its sent to be able to notify hub when a check has been discontinued.
 
-The agent connects to hub using https and tofu of the certificate.
-
+On startup an agent asks the hub when it expects new checks. If the hub expects checks that the agent doesn't recognize it will notify hub that these are deprecated.
 
 
 A namespace can be set on a check to be used by the hub for categorising checks.
@@ -22,14 +20,12 @@ for example
 "net:www.test.com:from-vpn"  	# for a http-up check of a site from a vpn
 "machine:foobar"     		# for a cpu check on a machine
 
-this might be presented on the hub as:
 
-[TODO]
+# Security
 
+The agent connects to hub using https and tofu of the certificate.
 
-# Authethication
-
-We use generated tokens for authentication. The hub stores sha256 of the tokens. Sha256 is enough and we dont need something more advanced like scrypt since the tokens contain a lot of entropy.
+We use generated tokens for agent authentication. The hub stores sha256 of the tokens. Sha256 is enough and we dont need something more advanced like scrypt since the tokens contain a lot of entropy.
 
 
 # UI
@@ -55,108 +51,75 @@ fooname
 
 
 """
-net
-  www.test.com
-    - http-up good
-    - tls     good
-    from-vpn
-      - http-up  fail
-      - tls  	 fail
+www.test.com
+  - http-up good
+  - tls     good
+  from-vpn
+    - http-up  fail  "Connection refused"
+    - tls      fail  "Timeout"
 
-machine
-  foobar
-    - cpu     good
-    - mem     good
+foobar
+  - cpu     good
+  - mem     good
 """
 
 
 
 ping_check:
-  namespace: "net:test.com"
   host: "test.com"
 
 
 cert_expiry_check:
-  namespace: "net:test.com"
+  namespace: "test.com"
   host: "test.com"
   days: 30
 
 disk_check:
-  namespace: "machine:homeserver"
+  namespace: "homeserver"
   mountpoint: "/"
   free: "30%"
 
 
 
-df = {
-  check-type: "disk_free",
-  namespace: "namespace:homeserver",
-  check-params: {
-    mountpoint: "/",
-    free-limit: "30%",
-  }
-}
-
-cert = {
-  check-type: "cert_expiry",
-  namespace: "net:test.com"
-  check-params: {
-    host: "test.com",
-    day-limit: 30
-  }
-}
-
-http1 = {
-  check-type: "http_up",
-  namespace: "net:test.com",
-  check-params: {
-    host: "test.com"
-    port: 80
-    /* allowed status codes are 2xx, 3xx */
-  }
-}
-
-http2 = {
-  check-type: "http_up",
-  namespace: "net:test.com",
-  check-params: {
-    host: "test.com",
-    status_code: [200],
-    port: 8081,
-    tls: false
-  }
-}
-
-http_rule = {
-  check: http_check,
-  interval: 100,
-}
-
-
-status_df = {
-  check: df,
-  status: "good",
-  status-msg: "",
-  timestamp: xxx
-}
-
-status_cert = {
-  check: cert,
-  status: "fail",
-  status-msg: "Cert expires in 28 days",
-  timestamp: xxx
-}
-
-
-server_check1 = {
-  check = df,
-  expected_agent = "homeserver",
-}
-
-server_result = {
-  check = df,
-  status: status_df,   # may be timeout
-  last-recieved: status_df,
-  last-good: status_df,
-  last-fail: status_df,
+namespaces: {
+  test.com: [
+    {
+      check-type: "cert_expiry",
+      check-params: {
+        host: "test.com",
+        day-limit: 30
+      },
+      interval: 300
+    },
+    {
+      check-type: "http_up",
+      check-params: {
+        host: "test.com"
+        port: 80
+        /* allowed status codes are 2xx, 3xx */
+      }
+      interval: 300
+    },
+    {
+      check-type: "http_up",
+      check-params: {
+        host: "test.com",
+        status_code: [200],
+        port: 8081,
+        tls: false
+      }
+      interval: 300
+    }
+  ],
+  homeserver: [
+    {
+      check-type: "disk_free",
+      namespace: "homeserver",
+      check-params: {
+        mountpoint: "/",
+        free-limit: "30%",
+      }
+      interval: 60
+    }
+  ]
 }
