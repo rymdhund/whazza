@@ -18,6 +18,12 @@ type CheckModel struct {
 	Agent AgentModel
 }
 
+type ResultModel struct {
+	ID int
+	base.Result
+	CheckID int
+}
+
 type CheckOverview struct {
 	Check        CheckModel
 	Result       base.Result

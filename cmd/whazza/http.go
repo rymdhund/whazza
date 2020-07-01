@@ -6,9 +6,11 @@ import (
 	"log"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/hubutil"
+	"github.com/rymdhund/whazza/internal/monitor"
 	"github.com/rymdhund/whazza/internal/persist"
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
@@ -32,6 +34,16 @@ func startServer() {
 		panic(err)
 	}
 	db.Close()
+
+	go func() {
+		for {
+			err := monitor.CheckForExpired()
+			if err != nil {
+				log.Printf("Error in CheckForExpired: %s", err)
+			}
+			time.Sleep(10 * time.Second)
+		}
+	}()
 
 	http.HandleFunc("/", notFoundHandler)
 	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
@@ -74,7 +86,9 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 			http.Error(w, "400 Bad Request. Invalid data", http.StatusBadRequest)
 			return
 		}
+
 		err = saveResult(agent, checkResult)
+
 		if err != nil {
 			log.Printf("Error saving checkresult: %s", e)
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
@@ -86,7 +100,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 	}
 }
 
-func saveResult(agent persist.AgentModel, res base.CheckResultMsg) error {
+func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg) error {
 	db, err := persist.Open(dbfile)
 	if err != nil {
 		return err
@@ -96,13 +110,28 @@ func saveResult(agent persist.AgentModel, res base.CheckResultMsg) error {
 	if err != nil {
 		return err
 	}
-	err = tx.AddResult(agent, res.Result, res.Check)
+
+	// register check if not exists
+	check, err := tx.RegisterCheck(agent, checkRes.Check)
 	if err != nil {
 		tx.Rollback()
 		return err
-	} else {
-		tx.Commit()
 	}
+
+	res, err := tx.AddResult(agent, check, checkRes.Result)
+	if err != nil {
+		tx.Rollback()
+		return err
+	}
+	tx.Commit()
+
+	go func() {
+		err := monitor.HandleResult(check, res)
+		if err != nil {
+			log.Printf("Got error from monitor: %s", err)
+		}
+	}()
+
 	return nil
 }
 

@@ -4,7 +4,7 @@ import (
 	"database/sql"
 	"time"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // sqlite
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
@@ -76,27 +76,37 @@ func (db *DB) Init() error {
 		return err
 	}
 
+	_, err = db.Exec(`
+	CREATE TABLE IF NOT EXISTS notifications (
+		id INTEGER PRIMARY KEY,
+		check_id INTEGER NOT NULL,
+		status TEXT NOT NULL
+	)
+	`)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
-func (tx *Tx) AddCheck(agent AgentModel, check base.Check) (int64, error) {
+func (tx *Tx) AddCheck(agent AgentModel, check base.Check) (CheckModel, error) {
 	res, err := tx.Exec(
 		`INSERT INTO checks
 		(agent_id, check_type, namespace, params_encoded, interval)
 		VALUES (?, ?, ?, ?, ?)`,
 		agent.ID, check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
 	if err != nil {
-		return 0, err
+		return CheckModel{}, err
 	}
 
 	id, _ := res.LastInsertId()
-	return id, nil
+	return CheckModel{int(id), check, agent}, nil
 }
 
-func (tx *Tx) RegisterCheck(agent AgentModel, check base.Check) (int64, error) {
-	// TODO: this should take agent as well and use as part of the check key
+func (tx *Tx) RegisterCheck(agent AgentModel, check base.Check) (CheckModel, error) {
 	var (
-		checkId  int64
+		checkID  int64
 		interval int
 	)
 	err := tx.QueryRow(
@@ -105,45 +115,42 @@ func (tx *Tx) RegisterCheck(agent AgentModel, check base.Check) (int64, error) {
 		check.Namespace,
 		check.ParamsEncoded(),
 		agent.ID,
-	).Scan(&checkId, &interval)
+	).Scan(&checkID, &interval)
 	switch {
 	case err == sql.ErrNoRows:
-		checkId, err = tx.AddCheck(agent, check)
+		checkModel, err := tx.AddCheck(agent, check)
 		if err != nil {
-			return 0, err
+			return CheckModel{}, err
 		}
-		return checkId, nil
+		return checkModel, nil
 	case err != nil:
-		return 0, err
+		return CheckModel{}, err
 	default:
-	}
-
-	// Update interval if changed
-	if interval != check.Interval {
-		_, err := tx.Exec("UPDATE checks SET interval = ? WHERE id = ?", check.Interval, checkId)
-		if err != nil {
-			return checkId, err
+		// Update interval if changed
+		if interval != check.Interval {
+			_, err := tx.Exec("UPDATE checks SET interval = ? WHERE id = ?", check.Interval, checkID)
+			if err != nil {
+				return CheckModel{}, err
+			}
 		}
-	}
 
-	return checkId, nil
+		return CheckModel{int(checkID), check, agent}, nil
+	}
 }
 
-func (tx *Tx) AddResult(agent AgentModel, res base.Result, check base.Check) error {
-	checkId, err := tx.RegisterCheck(agent, check)
-	if err != nil {
-		return err
-	}
-
-	_, err = tx.Exec(
+func (tx *Tx) AddResult(agent AgentModel, check CheckModel, res base.Result) (ResultModel, error) {
+	r, err := tx.Exec(
 		`INSERT INTO results
 		(check_id, status, status_msg, timestamp)
 		VALUES (?, ?, ?, ?)`,
-		checkId, res.Status, res.StatusMsg, res.Timestamp.Unix())
+		check.ID, res.Status, res.StatusMsg, res.Timestamp.Unix())
 	if err != nil {
-		return err
+		return ResultModel{}, err
 	}
-	return nil
+
+	id, _ := r.LastInsertId()
+
+	return ResultModel{int(id), res, check.ID}, nil
 }
 
 func (db *DB) AuthenticateAgent(name string, token sectoken.SecToken) (AgentModel, bool, error) {
@@ -267,4 +274,89 @@ func (db *DB) GetCheckOverviews() ([]CheckOverview, error) {
 		overviews = append(overviews, o)
 	}
 	return overviews, nil
+}
+
+func (db *DB) GetCheckById(ID int) (CheckModel, error) {
+	var c CheckModel
+	var params []byte
+	err := db.QueryRow(
+		`SELECT c.id, c.check_type, c.namespace, c.params_encoded, interval, a.id, a.name FROM checks c
+		LEFT JOIN agents a ON c.agent_id = a.id`,
+	).Scan(&c.ID, &c.CheckType, &c.Namespace, &params, &c.Interval, &c.Agent.ID, &c.Agent.Name)
+
+	if err != nil {
+		return CheckModel{}, err
+	}
+
+	c.CheckParams = base.DecodeParams(params)
+	return c, nil
+}
+
+func (db *DB) GetExpiredChecks() ([]CheckModel, error) {
+	overviews, err := db.GetCheckOverviews()
+	if err != nil {
+		return nil, err
+	}
+
+	expired := []CheckModel{}
+	for _, ov := range overviews {
+		if ov.Result.Status == "expired" {
+			expired = append(expired, ov.Check)
+		}
+	}
+
+	return expired, nil
+}
+
+func (db *DB) GetNewerResults(resultID int) ([]ResultModel, error) {
+	rows, err := db.Query(
+		"SELECT id, status, status_msg, timestamp FROM results WHERE id > ?", resultID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	results := []ResultModel{}
+
+	for rows.Next() {
+		var res ResultModel
+		var timestamp int64
+		err := rows.Scan(&res.ID, &res.Status, &res.StatusMsg, &timestamp)
+		if err != nil {
+			return nil, err
+		}
+		res.Timestamp = time.Unix(timestamp, 0)
+		results = append(results, res)
+	}
+	return results, nil
+}
+
+// Returns "" if there are no notified statuses
+func (db *DB) LastNotification(checkID int) (string, error) {
+	var status string
+	err := db.QueryRow(
+		"SELECT status FROM notifications WHERE check_id = ? ORDER by id DESC",
+		checkID,
+	).Scan(&status)
+	switch {
+	case err == sql.ErrNoRows:
+		return "", nil
+	case err != nil:
+		return "", err
+	default:
+		return status, nil
+	}
+}
+
+func (db *DB) AddNotification(checkID int, status string) error {
+	_, err := db.Exec(
+		`INSERT INTO notifications
+		(check_id, status)
+		VALUES (?, ?)`,
+		checkID, status)
+	if err != nil {
+		return err
+	}
+	return nil
 }
