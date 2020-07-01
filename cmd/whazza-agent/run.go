@@ -65,10 +65,10 @@ func run() {
 
 	for {
 		next := pq[0]
-		for next.time.After(time.Now()) {
-			fmt.Printf("sleeping until %s\n", next.time)
-			time.Sleep(1 * time.Second)
-		}
+
+		// Sleep until next check is due
+		time.Sleep(next.time.Sub(time.Now()))
+
 		fmt.Printf("running check %+v\n", next.check)
 
 		// TODO: do this in goroutine
