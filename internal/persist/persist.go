@@ -248,7 +248,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 
 	var result base.Result
 	if (lastRes != base.Result{}) {
-		if lastRes.Timestamp.Add(time.Duration(check.Interval) * time.Second).Before(time.Now()) {
+		if lastRes.Timestamp.Add(time.Duration(check.Interval+300) * time.Second).Before(time.Now()) {
 			result = base.Result{Status: "expired", Timestamp: time.Now()}
 		} else {
 			result = lastRes

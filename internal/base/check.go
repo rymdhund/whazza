@@ -18,7 +18,7 @@ func (chk Check) Key() string {
 }
 
 func (chk Check) Name() string {
-	return fmt.Sprintf("%s", chk.CheckType)
+	return fmt.Sprintf("%s %s", chk.Namespace, chk.CheckType)
 }
 
 func (chk Check) ParamsEncoded() []byte {

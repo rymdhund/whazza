@@ -3,6 +3,7 @@ TODO:
 - Use env WHAZZA_DATA_DIR for hub generated key, cert and db files
 - Send notification mail when result changes
 - Serve webpage for health overview (needs users etc)
+- when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 
 
 Done

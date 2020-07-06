@@ -20,7 +20,13 @@ const dbfile = "./whazza.db"
 type AuthHandlerFunc func(http.ResponseWriter, *http.Request, persist.AgentModel)
 
 func startServer() {
-	err := hubutil.InitCert()
+	cfg, err := hubutil.ReadConfig("hub.json")
+	if err != nil {
+		fmt.Printf("Couldn't read config file\n")
+		panic(err)
+	}
+
+	err = hubutil.InitCert()
 	if err != nil {
 		panic(err)
 	}
@@ -35,9 +41,11 @@ func startServer() {
 	}
 	db.Close()
 
+	mon := monitor.New(cfg)
+
 	go func() {
 		for {
-			err := monitor.CheckForExpired()
+			err := mon.CheckForExpired()
 			if err != nil {
 				log.Printf("Error in CheckForExpired: %s", err)
 			}
@@ -47,7 +55,7 @@ func startServer() {
 
 	http.HandleFunc("/", notFoundHandler)
 	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
-	http.HandleFunc("/agent/result", basicAuth(resultHandler))
+	http.HandleFunc("/agent/result", basicAuth(mkResultHandler(mon)))
 	log.Fatal(http.ListenAndServeTLS(":4433", "cert.pem", "key.pem", nil))
 }
 
@@ -67,7 +75,13 @@ func pingHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMode
 	}
 }
 
-func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentModel) {
+func mkResultHandler(mon *monitor.Monitor) AuthHandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request, agent persist.AgentModel) {
+		resultHandler(w, r, agent, mon)
+	}
+}
+
+func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentModel, mon *monitor.Monitor) {
 	switch r.Method {
 	case "POST":
 		log.Print("Got result")
@@ -87,7 +101,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 			return
 		}
 
-		err = saveResult(agent, checkResult)
+		err = saveResult(agent, checkResult, mon)
 
 		if err != nil {
 			log.Printf("Error saving checkresult: %s", e)
@@ -100,7 +114,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 	}
 }
 
-func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg) error {
+func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *monitor.Monitor) error {
 	db, err := persist.Open(dbfile)
 	if err != nil {
 		return err
@@ -126,7 +140,7 @@ func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg) error {
 	tx.Commit()
 
 	go func() {
-		err := monitor.HandleResult(check, res)
+		err := mon.HandleResult(check, res)
 		if err != nil {
 			log.Printf("Got error from monitor: %s", err)
 		}
