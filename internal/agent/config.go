@@ -151,24 +151,4 @@ func ReadChecksConfig(filename string) ([]base.Check, error) {
 		}
 	}
 	return checks, err
-
-	/*
-		var checkList []map[string]interface{}
-		err = json.Unmarshal(contents, &checkList)
-		if err != nil {
-			return nil, err
-		}
-
-		checks := []base.Check{}
-		for _, c := checkList {
-			base.Check{
-				CheckType: c["CheckType"],
-				Namespace: c["Namespace"],
-				Interval: c["Interval"],
-			}
-			c[]
-
-		}
-		return checks, nil
-	*/
 }
