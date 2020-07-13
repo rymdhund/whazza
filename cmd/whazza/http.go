@@ -18,7 +18,7 @@ import (
 type AuthHandlerFunc func(http.ResponseWriter, *http.Request, persist.AgentModel)
 
 func startServer() {
-	err := hubutil.InitCert(Config.CertFile(), Config.KeyFile())
+	err := hubutil.InitCert(Config.KeyFile(), Config.CertFile())
 	if err != nil {
 		panic(err)
 	}
