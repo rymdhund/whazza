@@ -1,0 +1,9 @@
+{
+  "DataDir": "",
+  "NotifyEmail": "",
+  "SMTPHost": "",
+  "SMTPPort": 587,
+  "SMTPUser": "",
+  "SMTPPassword": "",
+  "SMTPFrom": ""
+}
