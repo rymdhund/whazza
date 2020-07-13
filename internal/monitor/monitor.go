@@ -54,7 +54,7 @@ func (m *Monitor) mkMailer() (Mailer, error) {
 }
 
 func (m *Monitor) CheckForExpired() error {
-	db, err := persist.Open("./whazza.db")
+	db, err := persist.Open(m.cfg.Database())
 	if err != nil {
 		return err
 	}
@@ -82,7 +82,7 @@ func (m *Monitor) CheckForExpired() error {
 }
 
 func (m *Monitor) HandleResult(check persist.CheckModel, res persist.ResultModel) error {
-	db, err := persist.Open("./whazza.db")
+	db, err := persist.Open(m.cfg.Database())
 	if err != nil {
 		return err
 	}

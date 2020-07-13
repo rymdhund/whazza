@@ -46,7 +46,7 @@ func (pq *PriorityQueue) Pop() interface{} {
 
 func run() {
 	cfg := readConf()
-	checks, err := agent.ReadChecksConfig("checks.json")
+	checks, err := agent.ReadChecksConfig(checksConfigFile())
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
 		os.Exit(1)

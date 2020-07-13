@@ -3,10 +3,14 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 
 	"github.com/rymdhund/whazza/internal/hubutil"
 	"github.com/rymdhund/whazza/internal/persist"
 )
+
+// Config is  the global configuration object. Initialized by initConf() function
+var Config hubutil.HubConfig
 
 func main() {
 	args := os.Args
@@ -14,12 +18,16 @@ func main() {
 	if len(args) <= 1 {
 		showUsage()
 	} else if args[1] == "run" {
+		initConf()
 		startServer()
 	} else if args[1] == "register" && len(args) == 4 {
+		initConf()
 		registerAgent(args[2], args[3])
 	} else if args[1] == "fingerprint" && len(args) == 2 {
+		initConf()
 		showFingerprint()
 	} else if args[1] == "show" && len(args) == 2 {
+		initConf()
 		show()
 	} else {
 		showUsage()
@@ -37,7 +45,7 @@ Where command is one of the following:
 }
 
 func show() {
-	db, err := persist.Open(dbfile)
+	db, err := persist.Open(Config.Database())
 	if err != nil {
 		panic(err)
 	}
@@ -52,12 +60,12 @@ func show() {
 }
 
 func showFingerprint() {
-	err := hubutil.InitCert()
+	err := hubutil.InitCert(Config.KeyFile(), Config.CertFile())
 	if err != nil {
 		panic(err)
 	}
 
-	fp, err := hubutil.ReadCertFingerprint()
+	fp, err := hubutil.ReadCertFingerprint(Config.CertFile())
 	if err != nil {
 		panic(err)
 	}
@@ -65,7 +73,7 @@ func showFingerprint() {
 }
 
 func registerAgent(name, tokenHash string) {
-	db, err := persist.Open(dbfile)
+	db, err := persist.Open(Config.Database())
 	if err != nil {
 		panic(err)
 	}
@@ -81,4 +89,16 @@ func registerAgent(name, tokenHash string) {
 	} else {
 		tx.Commit()
 	}
+}
+
+func initConf() {
+	cfgFile := path.Join(os.Getenv("HOME"), ".whazza", "hub.json")
+
+	cfg, err := hubutil.ReadConfig(cfgFile)
+	if err != nil {
+		fmt.Printf("Couldn't read config file\n")
+		panic(err)
+	}
+
+	Config = cfg
 }

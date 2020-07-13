@@ -15,23 +15,15 @@ import (
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
-const dbfile = "./whazza.db"
-
 type AuthHandlerFunc func(http.ResponseWriter, *http.Request, persist.AgentModel)
 
 func startServer() {
-	cfg, err := hubutil.ReadConfig("hub.json")
-	if err != nil {
-		fmt.Printf("Couldn't read config file\n")
-		panic(err)
-	}
-
-	err = hubutil.InitCert()
+	err := hubutil.InitCert(Config.CertFile(), Config.KeyFile())
 	if err != nil {
 		panic(err)
 	}
 
-	db, err := persist.Open(dbfile)
+	db, err := persist.Open(Config.Database())
 	if err != nil {
 		panic(err)
 	}
@@ -41,7 +33,7 @@ func startServer() {
 	}
 	db.Close()
 
-	mon := monitor.New(cfg)
+	mon := monitor.New(Config)
 
 	go func() {
 		for {
@@ -56,7 +48,7 @@ func startServer() {
 	http.HandleFunc("/", notFoundHandler)
 	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
 	http.HandleFunc("/agent/result", basicAuth(mkResultHandler(mon)))
-	log.Fatal(http.ListenAndServeTLS(":4433", "cert.pem", "key.pem", nil))
+	log.Fatal(http.ListenAndServeTLS(":4433", Config.CertFile(), Config.KeyFile(), nil))
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
@@ -115,7 +107,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 }
 
 func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *monitor.Monitor) error {
-	db, err := persist.Open(dbfile)
+	db, err := persist.Open(Config.Database())
 	if err != nil {
 		return err
 	}
@@ -177,7 +169,7 @@ func basicAuth(handler AuthHandlerFunc) http.HandlerFunc {
 }
 
 func authAgent(name string, token sectoken.SecToken) (persist.AgentModel, bool, error) {
-	db, err := persist.Open(dbfile)
+	db, err := persist.Open(Config.Database())
 	if err != nil {
 		return persist.AgentModel{}, false, err
 	}

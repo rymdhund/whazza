@@ -8,6 +8,7 @@ import (
 	"io/ioutil"
 	"math/big"
 	"os"
+	"path"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/checking"
@@ -52,6 +53,11 @@ func SaveConfig(cfg Config, filename string) error {
 	var _, err = os.Stat(filename)
 	if !os.IsNotExist(err) {
 		return errors.New("Config file already exists")
+	}
+
+	err = os.MkdirAll(path.Dir(filename), 0755)
+	if err != nil {
+		return err
 	}
 
 	f, err := os.Create(filename)

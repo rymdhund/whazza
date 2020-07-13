@@ -17,8 +17,8 @@ import (
 	"time"
 )
 
-func InitCert() error {
-	_, err := os.Stat("key.pem")
+func InitCert(keyFile, certFile string) error {
+	_, err := os.Stat(keyFile)
 	if !os.IsNotExist(err) {
 		// key exists
 		return nil
@@ -56,7 +56,7 @@ func InitCert() error {
 		return fmt.Errorf("Failed to create certificate: %v", err)
 	}
 
-	certOut, err := os.OpenFile("cert.pem", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	certOut, err := os.OpenFile(certFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return fmt.Errorf("Failed to open cert.pem for writing: %v", err)
 	}
@@ -68,7 +68,7 @@ func InitCert() error {
 	}
 	log.Print("wrote cert.pem\n")
 
-	keyOut, err := os.OpenFile("key.pem", os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
+	keyOut, err := os.OpenFile(keyFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0600)
 	if err != nil {
 		return fmt.Errorf("Failed to open key.pem for writing: %v", err)
 	}
@@ -87,8 +87,8 @@ func InitCert() error {
 	return nil
 }
 
-func ReadCertFingerprint() (string, error) {
-	dat, err := ioutil.ReadFile("cert.pem")
+func ReadCertFingerprint(certFile string) (string, error) {
+	dat, err := ioutil.ReadFile(certFile)
 	if err != nil {
 		return "", err
 	}

@@ -3,12 +3,11 @@ package main
 import (
 	"fmt"
 	"os"
+	"path"
 	"strconv"
 
 	"github.com/rymdhund/whazza/internal/agent"
 )
-
-const cfgFile = "config.json"
 
 func main() {
 	args := os.Args
@@ -32,12 +31,12 @@ func main() {
 				fmt.Printf("Error generating config: %s\n", err)
 				os.Exit(1)
 			}
-			err = agent.SaveConfig(cfg, cfgFile)
+			err = agent.SaveConfig(cfg, configFile())
 			if err != nil {
 				fmt.Printf("Error saving config: %s\n", err)
 				os.Exit(1)
 			}
-			fmt.Printf("Successfully created %s\n", cfgFile)
+			fmt.Printf("Successfully created %s\n", configFile())
 		} else {
 			ShowUsage()
 			os.Exit(1)
@@ -62,8 +61,16 @@ Where command is one of the following:
 `, os.Args[0])
 }
 
+func configFile() string {
+	return path.Join(os.Getenv("HOME"), ".whazza-agent", "config.json")
+}
+
+func checksConfigFile() string {
+	return path.Join(os.Getenv("HOME"), ".whazza-agent", "checks.json")
+}
+
 func readConf() agent.Config {
-	cfg, err := agent.ReadConfig(cfgFile)
+	cfg, err := agent.ReadConfig(configFile())
 	if err != nil {
 		fmt.Printf("Couldn't read config file: %s", err)
 		os.Exit(1)
