@@ -139,7 +139,7 @@ func (m Mailer) sendMail(to, subject, body string) error {
 
 	err := smtp.SendMail(addr, auth, m.from, []string{to}, []byte(msg))
 	if err != nil {
-		return err
+		return fmt.Errorf("sendMail: failed with %w", err)
 	}
 	return nil
 }
