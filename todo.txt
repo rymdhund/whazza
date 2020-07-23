@@ -1,12 +1,12 @@
 TODO:
 - Agent should fetch last run for checks from hub
 - Use env WHAZZA_DATA_DIR for hub generated key, cert and db files
-- Send notification mail when result changes
 - Serve webpage for health overview (needs users etc)
 - when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 
 
 Done
+- Send notification mail when result changes
 - when a check comes in with a new interval, accept the new interval
 - agent daemon mode
 - agent checks.json config file
