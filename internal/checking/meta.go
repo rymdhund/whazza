@@ -16,6 +16,8 @@ func GetCheckMeta(checkType string) (CheckMeta, error) {
 	switch checkType {
 	case "http-up":
 		return HttpUpCheckMeta{}, nil
+	case "https-up":
+		return HttpUpCheckMeta{}, nil // HttpUpMeta handles https as well
 	default:
 		return nil, fmt.Errorf("Unknown check type: %s", checkType)
 	}

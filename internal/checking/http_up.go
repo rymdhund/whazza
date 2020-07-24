@@ -1,6 +1,7 @@
 package checking
 
 import (
+	"crypto/tls"
 	"errors"
 	"fmt"
 	"net/http"
@@ -24,18 +25,30 @@ func (m HttpUpCheckMeta) DoCheck(chk base.Check) base.Result {
 	if err != nil {
 		panic("couldn't parse params")
 	}
-	status, msg = httpCheck(params.(HttpCheckParams))
+
+	https := chk.CheckType == "https-up"
+
+	status, msg = httpCheck(params.(HttpCheckParams), https)
 	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }
 
-func httpCheck(params HttpCheckParams) (string, string) {
-	// Dont follow redirects
+func httpCheck(params HttpCheckParams, https bool) (string, string) {
+	// Dont follow redirects and allow bad certs
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
+		Transport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
 	}
-	resp, err := client.Get(fmt.Sprintf("http://%s:%d/", params.Host, params.Port))
+	var url string
+	if https {
+		url = fmt.Sprintf("https://%s:%d/", params.Host, params.Port)
+	} else {
+		url = fmt.Sprintf("http://%s:%d/", params.Host, params.Port)
+	}
+	resp, err := client.Get(url)
 
 	if err != nil {
 		return "fail", err.Error()
@@ -85,7 +98,11 @@ func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
 
 	p, ok := chk.CheckParams["Port"]
 	if !ok {
-		ret.Port = 80
+		if chk.CheckType == "https-up" {
+			ret.Port = 443
+		} else {
+			ret.Port = 80
+		}
 	} else {
 		port, err := GetJsonInt(p)
 		if err != nil {

@@ -48,7 +48,12 @@ func startServer() {
 	http.HandleFunc("/", notFoundHandler)
 	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
 	http.HandleFunc("/agent/result", basicAuth(mkResultHandler(mon)))
-	log.Fatal(http.ListenAndServeTLS(":4433", Config.CertFile(), Config.KeyFile(), nil))
+
+	addr := ":4433"
+
+	log.Printf("listening on %s", addr)
+
+	log.Fatal(http.ListenAndServeTLS(addr, Config.CertFile(), Config.KeyFile(), nil))
 }
 
 func notFoundHandler(w http.ResponseWriter, r *http.Request) {
