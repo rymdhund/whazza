@@ -101,7 +101,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 		err = saveResult(agent, checkResult, mon)
 
 		if err != nil {
-			log.Printf("Error saving checkresult: %s", e)
+			log.Printf("Error saving checkresult: %s", err)
 			http.Error(w, "500 Internal Server Error", http.StatusInternalServerError)
 			return
 		}
