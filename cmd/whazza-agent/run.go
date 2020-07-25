@@ -71,15 +71,16 @@ func run() {
 
 		fmt.Printf("running check %+v\n", next.check)
 
-		// TODO: do this in goroutine
-		meta, _ := checking.GetCheckMeta(next.check.CheckType)
-		res := meta.DoCheck(next.check)
-		checkResult := base.CheckResultMsg{Check: next.check, Result: res}
-		err = agent.SendCheckResult(cfg, checkResult)
-		if err != nil {
-			log.Printf("Error: couldn't send result: %s", err)
-			// TODO: Try again
-		}
+		go func() {
+			meta, _ := checking.GetCheckMeta(next.check.CheckType)
+			res := meta.DoCheck(next.check)
+			checkResult := base.CheckResultMsg{Check: next.check, Result: res}
+			err = agent.SendCheckResult(cfg, checkResult)
+			if err != nil {
+				log.Printf("Error: couldn't send result: %s", err)
+				// TODO: Try again
+			}
+		}()
 
 		next.time = time.Now().Add(time.Duration(next.check.Interval) * time.Second)
 		heap.Fix(&pq, 0)

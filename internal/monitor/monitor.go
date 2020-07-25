@@ -110,7 +110,7 @@ func (m *Monitor) HandleResult(check persist.CheckModel, res persist.ResultModel
 func (m *Monitor) notify(db *persist.DB, check persist.CheckModel, res base.Result) error {
 	log.Printf("Notification [%s] %+v", res.Status, check)
 	subj := fmt.Sprintf("%s %s", check.Name(), res.Status)
-	body := fmt.Sprintf("Notification\n\n [%s] %+v", res.Status, check)
+	body := fmt.Sprintf("%+v\n[%s] - %s", check, res.Status, res.StatusMsg)
 
 	if m.cfg.NotifyEmail != "" {
 		mailer, err := m.mkMailer()
