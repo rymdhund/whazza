@@ -44,9 +44,17 @@ func httpCheck(params HttpCheckParams, https bool) (string, string) {
 	}
 	var url string
 	if https {
-		url = fmt.Sprintf("https://%s:%d/", params.Host, params.Port)
+		if params.Port == 443 {
+			url = fmt.Sprintf("https://%s/", params.Host)
+		} else {
+			url = fmt.Sprintf("https://%s:%d/", params.Host, params.Port)
+		}
 	} else {
-		url = fmt.Sprintf("http://%s:%d/", params.Host, params.Port)
+		if params.Port == 80 {
+			url = fmt.Sprintf("http://%s/", params.Host)
+		} else {
+			url = fmt.Sprintf("http://%s:%d/", params.Host, params.Port)
+		}
 	}
 	resp, err := client.Get(url)
 
