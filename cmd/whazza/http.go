@@ -114,25 +114,25 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *monitor.Monitor) error {
 	db, err := persist.Open(Config.Database())
 	if err != nil {
-		return err
+		return fmt.Errorf("Couldn't open db: %w", err)
 	}
 	defer db.Close()
 	tx, err := db.Begin()
 	if err != nil {
-		return err
+		return fmt.Errorf("Couldn't begin transaction db: %w", err)
 	}
 
 	// register check if not exists
 	check, err := tx.RegisterCheck(agent, checkRes.Check)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return fmt.Errorf("Couldn't register check: %w", err)
 	}
 
 	res, err := tx.AddResult(agent, check, checkRes.Result)
 	if err != nil {
 		tx.Rollback()
-		return err
+		return fmt.Errorf("Couldn't add result: %w", err)
 	}
 	tx.Commit()
 
