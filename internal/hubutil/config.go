@@ -8,14 +8,14 @@ import (
 )
 
 type HubConfig struct {
-	DataDir string
+	DataDir string `json:"data_dir"`
 	// Mail settings
-	NotifyEmail  string
-	SMTPHost     string
-	SMTPPort     int
-	SMTPUser     string
-	SMTPPassword string
-	SMTPFrom     string
+	NotifyEmail  string `json:"notify_email"`
+	SMTPHost     string `json:"smtp_host"`
+	SMTPPort     int    `json:"smtp_port"`
+	SMTPUser     string `json:"smtp_user"`
+	SMTPPassword string `json:"smtp_password"`
+	SMTPFrom     string `json:"smtp_from"`
 }
 
 func (cfg HubConfig) Database() string {

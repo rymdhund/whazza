@@ -8,6 +8,7 @@ TODO:
 
 
 Done
+- Make all parameters in json snake_case
 - Https-up check
 - Https-up check
 - Send notification mail when result changes

@@ -92,7 +92,7 @@ func GetJsonInt(i interface{}) (int, error) {
 func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
 	var ret HttpCheckParams
 
-	h, ok := chk.CheckParams["Host"]
+	h, ok := chk.CheckParams["host"]
 	if !ok {
 		return nil, errors.New("No host in http-up check")
 	} else {
@@ -104,7 +104,7 @@ func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
 		}
 	}
 
-	p, ok := chk.CheckParams["Port"]
+	p, ok := chk.CheckParams["port"]
 	if !ok {
 		if chk.CheckType == "https-up" {
 			ret.Port = 443
@@ -119,7 +119,7 @@ func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
 		ret.Port = port
 	}
 
-	sc, ok := chk.CheckParams["StatusCodes"]
+	sc, ok := chk.CheckParams["status_codes"]
 	if !ok {
 		// let statuscodes be nil as default
 	} else {
@@ -144,5 +144,5 @@ func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
 }
 
 func (m HttpUpCheckMeta) DefaultNamespace(chk base.Check) string {
-	return chk.CheckParams["Host"].(string)
+	return chk.CheckParams["host"].(string)
 }

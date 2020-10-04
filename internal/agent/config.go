@@ -16,11 +16,11 @@ import (
 )
 
 type Config struct {
-	ServerHost            string
-	ServerPort            int
-	ServerCertFingerprint string
-	AgentName             string
-	AgentToken            string
+	ServerHost            string `json:"server_host"`
+	ServerPort            int    `json:"server_port"`
+	ServerCertFingerprint string `json:"server_cert_fingerprint"`
+	AgentName             string `json:"agent_name"`
+	AgentToken            string `json:"agent_token"`
 }
 
 func GenerateConfig(agentName string, serverHost string, serverPort int, serverFingerprint string) (Config, error) {
@@ -107,12 +107,15 @@ func generateToken() (string, error) {
 	return string(key), nil
 }
 
-func normalizeCheck(chk *base.Check) error {
+func normalizeCheck(chk *base.Check, defaultInterval int) error {
 	if chk.CheckType == "" {
 		return errors.New("Empty check type")
 	}
 	if chk.Interval <= 0 {
 		return errors.New("Invalid interval")
+	}
+	if chk.Interval == 0 {
+		chk.Interval = defaultInterval
 	}
 	meta, err := checking.GetCheckMeta(chk.CheckType)
 	if err != nil {
@@ -136,19 +139,30 @@ func ReadChecksConfig(filename string) ([]base.Check, error) {
 	}
 	defer f.Close()
 
-	var checks []base.Check
+	type checkConfig struct {
+		DefaultInterval int          `json:"default_interval"`
+		Checks          []base.Check `json:"checks"`
+	}
+
+	var config checkConfig
 
 	decoder := json.NewDecoder(f)
 	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&checks)
+	err = decoder.Decode(&config)
 	if err != nil {
+		panic(err)
 		return nil, err
 	}
-	for i, _ := range checks {
-		err = normalizeCheck(&checks[i])
+
+	defaultInterval := config.DefaultInterval
+	if defaultInterval <= 0 {
+		defaultInterval = 60
+	}
+	for i := range config.Checks {
+		err = normalizeCheck(&config.Checks[i], defaultInterval)
 		if err != nil {
 			return nil, err
 		}
 	}
-	return checks, err
+	return config.Checks, err
 }

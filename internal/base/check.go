@@ -7,10 +7,10 @@ import (
 )
 
 type Check struct {
-	CheckType   string
-	Namespace   string
-	CheckParams map[string]interface{}
-	Interval    int
+	CheckType   string                 `json:"type"`
+	Namespace   string                 `json:"namespace"`
+	CheckParams map[string]interface{} `json:"params"`
+	Interval    int                    `json:"interval"`
 }
 
 func (chk Check) Key() string {

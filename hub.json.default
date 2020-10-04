@@ -1,9 +1,9 @@
 {
-  "DataDir": "",
-  "NotifyEmail": "",
-  "SMTPHost": "",
-  "SMTPPort": 587,
-  "SMTPUser": "",
-  "SMTPPassword": "",
-  "SMTPFrom": ""
+  "data_dir": "",
+  "notify_email": "",
+  "smtp_host": "",
+  "smtp_port": 587,
+  "smtp_user": "",
+  "smtp_password": "",
+  "smtp_from": ""
 }
