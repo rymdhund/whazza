@@ -62,17 +62,26 @@ Where command is one of the following:
 }
 
 func configFile() string {
-	return path.Join(os.Getenv("HOME"), ".whazza-agent", "config.json")
+	dir := os.Getenv("WHAZZA_AGENT_DIR")
+	if dir == "" {
+		dir = path.Join(os.Getenv("HOME"), ".whazza-agent")
+	}
+	return path.Join(dir, "config.json")
 }
 
 func checksConfigFile() string {
-	return path.Join(os.Getenv("HOME"), ".whazza-agent", "checks.json")
+	dir := os.Getenv("WHAZZA_AGENT_DIR")
+	if dir == "" {
+		dir = path.Join(os.Getenv("HOME"), ".whazza-agent")
+	}
+	return path.Join(dir, "checks.json")
 }
 
 func readConf() agent.Config {
-	cfg, err := agent.ReadConfig(configFile())
+	file := configFile()
+	cfg, err := agent.ReadConfig(file)
 	if err != nil {
-		fmt.Printf("Couldn't read config file: %s", err)
+		fmt.Printf("Couldn't read config file: %s (%s)\n", file, err)
 		os.Exit(1)
 	}
 	return cfg
