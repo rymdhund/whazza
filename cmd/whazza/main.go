@@ -41,6 +41,7 @@ Where command is one of the following:
   run                            Start the server
   fingerprint                    Show the certificate fingerprint
   register <agent> <token hash>  Register the agent with a hashed token
+  show                           Show status of checks
 `, os.Args[0])
 }
 
@@ -92,12 +93,15 @@ func registerAgent(name, tokenHash string) {
 }
 
 func initConf() {
-	cfgFile := path.Join(os.Getenv("HOME"), ".whazza", "hub.json")
+	cfgFile := os.Getenv("WHAZZA_CONFIG_FILE")
+	if cfgFile == "" {
+		cfgFile = path.Join(os.Getenv("HOME"), ".whazza", "hub.json")
+	}
 
 	cfg, err := hubutil.ReadConfig(cfgFile)
 	if err != nil {
-		fmt.Printf("Couldn't read config file\n")
-		panic(err)
+		fmt.Printf("Couldn't read config file %s\n", cfgFile)
+		os.Exit(1)
 	}
 
 	Config = cfg
