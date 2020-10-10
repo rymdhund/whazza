@@ -3,6 +3,7 @@ package checking
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 )
@@ -35,6 +36,21 @@ func (c Check) Validate() error {
 
 func (c Check) Name() string {
 	return c.Runner.Name()
+}
+
+// IsExpired returns true if the check is expired
+// We count the check as expired if the check is delayed by Interval/2 (but at least 10m and at most 4h)
+func (c Check) IsExpired(lastResult time.Time, now time.Time) bool {
+	limit := time.Duration(c.Interval/2) * time.Second
+	if limit.Minutes() < 10 {
+		limit = time.Duration(10) * time.Minute
+	}
+	if limit.Hours() > 4 {
+		limit = time.Duration(4) * time.Hour
+	}
+	limit += time.Duration(c.Interval) * time.Second
+
+	return lastResult.Add(limit).Before(now)
 }
 
 func New(checkType, namespace string, interval int, runnerJson []byte) (Check, error) {
