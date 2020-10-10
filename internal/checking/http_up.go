@@ -17,9 +17,13 @@ type HttpUpCheck struct {
 	StatusCodes []int  `json:"status_codes,omitempty"`
 }
 
+type HttpsUpCheck struct {
+	HttpUpCheck
+}
+
 func (c HttpUpCheck) Name() string {
 	if c.PortOrDefault() != 80 {
-		return fmt.Sprintf("http:%s:%d", c.Host, c.Port)
+		return fmt.Sprintf("http:%s:%d", c.Host, c.PortOrDefault())
 	}
 	return fmt.Sprintf("http:%s", c.Host)
 }
@@ -52,6 +56,33 @@ func (c HttpUpCheck) PortOrDefault() int {
 
 func (c HttpUpCheck) Run() base.Result {
 	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
+	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
+}
+
+///////////////////
+// Https methods //
+///////////////////
+
+func (c HttpsUpCheck) Type() string {
+	return "https-up"
+}
+
+func (c HttpsUpCheck) Name() string {
+	if c.PortOrDefault() != 443 {
+		return fmt.Sprintf("https:%s:%d", c.Host, c.PortOrDefault())
+	}
+	return fmt.Sprintf("https:%s", c.Host)
+}
+
+func (c HttpsUpCheck) PortOrDefault() int {
+	if c.Port == 0 {
+		return 443
+	}
+	return c.Port
+}
+
+func (c HttpsUpCheck) Run() base.Result {
+	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, true)
 	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }
 
@@ -101,13 +132,4 @@ func httpCheck(host string, port int, statusCodes []int, https bool) (string, st
 	}
 
 	return "good", ""
-}
-
-func GetJsonInt(i interface{}) (int, error) {
-	switch i.(type) {
-	case float64:
-		return int(i.(float64)), nil
-	default:
-		return 0, errors.New("Field is not int")
-	}
 }

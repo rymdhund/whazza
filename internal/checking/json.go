@@ -51,11 +51,18 @@ func unmarshalRunner(typ string, jsonData []byte) (CheckRunner, error) {
 		var runner HttpUpCheck
 		err := json.Unmarshal(jsonData, &runner)
 		if err != nil {
-			fmt.Println("error")
+			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
+		}
+		return runner, nil
+	case "https-up":
+		var runner HttpsUpCheck
+		err := json.Unmarshal(jsonData, &runner)
+		if err != nil {
 			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
 		}
 		return runner, nil
 	default:
 		return nil, fmt.Errorf("Unkown Check type: %s", typ)
 	}
+
 }

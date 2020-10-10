@@ -45,6 +45,11 @@ func TestMarshal(t *testing.T) {
 		t.Fatalf("Error: %s", err)
 	}
 
+	if string(bytes) != `{"host":"example.com","interval":10,"namespace":"a","type":"http-up"}` {
+
+		t.Fatalf("Unexpected json: %s", string(bytes))
+	}
+
 	var check2 Check
 
 	err = json.Unmarshal(bytes, &check2)
