@@ -6,6 +6,7 @@ import (
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/utils"
 )
 
 type AgentModel struct {
@@ -34,20 +35,18 @@ type CheckOverview struct {
 }
 
 func (o *CheckOverview) Show() string {
-	timestring := func(t time.Time) string {
-		if (t != time.Time{}) {
-			return t.Format(time.RFC3339)
-		} else {
-			return "N/A"
-		}
+	now := time.Now()
+
+	extra := ""
+	if o.LastReceived.Status == "fail" {
+		extra = fmt.Sprintf(" last fail: %s", utils.HumanRelTime(now, o.LastFail.Timestamp, false))
 	}
-	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s, interval: %d",
+
+	return fmt.Sprintf("[%s] %s | %s | %s%s",
 		o.CheckModel.Check.Namespace,
 		o.Result.Status,
 		o.CheckModel.Check.Name(),
-		timestring(o.LastReceived.Timestamp),
-		timestring(o.LastGood.Timestamp),
-		timestring(o.LastFail.Timestamp),
-		o.CheckModel.Check.Interval,
+		utils.HumanRelTime(now, o.LastReceived.Timestamp, false),
+		extra,
 	)
 }
