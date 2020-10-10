@@ -44,7 +44,7 @@ func (o *CheckOverview) Show() string {
 	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s, interval: %d",
 		o.CheckModel.Check.Namespace,
 		o.Result.Status,
-		o.CheckModel.Check.Type,
+		o.CheckModel.Check.Name(),
 		timestring(o.LastReceived.Timestamp),
 		timestring(o.LastGood.Timestamp),
 		timestring(o.LastFail.Timestamp),

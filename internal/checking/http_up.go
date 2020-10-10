@@ -18,7 +18,10 @@ type HttpUpCheck struct {
 }
 
 func (c HttpUpCheck) Name() string {
-	return "http-up"
+	if c.PortOrDefault() != 80 {
+		return fmt.Sprintf("http:%s:%d", c.Host, c.Port)
+	}
+	return fmt.Sprintf("http:%s", c.Host)
 }
 
 func (c HttpUpCheck) Type() string {
