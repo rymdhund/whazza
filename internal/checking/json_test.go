@@ -3,6 +3,8 @@ package checking
 import (
 	"encoding/json"
 	"testing"
+
+	"github.com/rymdhund/whazza/internal/checking/checker"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -19,12 +21,12 @@ func TestUnmarshal(t *testing.T) {
 	if check.Interval != 60 {
 		t.Fatalf("Wrong check type: %s", check.Type)
 	}
-	runner, ok := check.Runner.(HttpUpCheck)
+	checker, ok := check.Checker.(checker.HttpUpChecker)
 	if !ok {
 		t.Fatal("Expected HttpUp")
 	}
-	if runner.Host != "example.com" {
-		t.Fatalf("Wrong host: %s", runner.Host)
+	if checker.Host != "example.com" {
+		t.Fatalf("Wrong host: %s", checker.Host)
 	}
 }
 
@@ -35,7 +37,7 @@ func TestMarshal(t *testing.T) {
 			Type:      "http-up",
 			Interval:  10,
 		},
-		Runner: HttpUpCheck{
+		Checker: checker.HttpUpChecker{
 			Host: "example.com",
 		},
 	}
@@ -63,12 +65,12 @@ func TestMarshal(t *testing.T) {
 	if check.Interval != 10 {
 		t.Fatalf("Wrong interval: %d", check.Interval)
 	}
-	runner, ok := check.Runner.(HttpUpCheck)
+	checker, ok := check.Checker.(checker.HttpUpChecker)
 	if !ok {
 		t.Fatal("Expected HttpUp")
 	}
-	if runner.Host != "example.com" {
-		t.Fatalf("Wrong host: %s", runner.Host)
+	if checker.Host != "example.com" {
+		t.Fatalf("Wrong host: %s", checker.Host)
 	}
 }
 

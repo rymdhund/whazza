@@ -3,11 +3,13 @@ package checking
 import (
 	"encoding/json"
 	"fmt"
+
+	"github.com/rymdhund/whazza/internal/checking/checker"
 )
 
 func (c Check) MarshalJSON() ([]byte, error) {
 	// A bit of a hack
-	bs, err := json.Marshal(c.Runner)
+	bs, err := json.Marshal(c.Checker)
 	if err != nil {
 		return nil, err
 	}
@@ -31,7 +33,7 @@ func (c *Check) UnmarshalJSON(jsonData []byte) error {
 	}
 	c.checkBase = base
 
-	c.Runner, err = unmarshalRunner(c.Type, jsonData)
+	c.Checker, err = unmarshalChecker(c.Type, jsonData)
 	if err != nil {
 		return err
 	}
@@ -45,22 +47,22 @@ func (c *Check) UnmarshalJSON(jsonData []byte) error {
 	return nil
 }
 
-func unmarshalRunner(typ string, jsonData []byte) (CheckRunner, error) {
+func unmarshalChecker(typ string, jsonData []byte) (Checker, error) {
 	switch typ {
 	case "http-up":
-		var runner HttpUpCheck
-		err := json.Unmarshal(jsonData, &runner)
+		var checker checker.HttpUpChecker
+		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
 		}
-		return runner, nil
+		return checker, nil
 	case "https-up":
-		var runner HttpsUpCheck
-		err := json.Unmarshal(jsonData, &runner)
+		var checker checker.HttpsUpChecker
+		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
 		}
-		return runner, nil
+		return checker, nil
 	default:
 		return nil, fmt.Errorf("Unkown Check type: %s", typ)
 	}

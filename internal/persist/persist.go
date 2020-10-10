@@ -55,7 +55,7 @@ func (db *DB) Init() error {
 		type TEXT NOT NULL,
 		namespace TEXT NOT NULL,
 		interval INTEGER NOT NULL,
-		runner_json JSON NOT NULL,
+		checker_json JSON NOT NULL,
 		FOREIGN KEY(agent_id) REFERENCES agents(id)
 	)
 	`)
@@ -94,9 +94,9 @@ func (db *DB) Init() error {
 func (tx *Tx) AddCheck(agent AgentModel, check checking.Check) (CheckModel, error) {
 	res, err := tx.Exec(
 		`INSERT INTO checks
-		(agent_id, type, namespace, interval, runner_json)
+		(agent_id, type, namespace, interval, checker_json)
 		VALUES (?, ?, ?, ?, ?)`,
-		agent.ID, check.Type, check.Namespace, check.Interval, check.Runner.AsJson())
+		agent.ID, check.Type, check.Namespace, check.Interval, check.Checker.AsJson())
 	if err != nil {
 		return CheckModel{}, err
 	}
@@ -115,11 +115,11 @@ func (tx *Tx) RegisterCheck(agent AgentModel, check checking.Check) (CheckModel,
 		  agent_id = ? AND
 		  type = ? AND
 		  namespace = ? AND
-		  runner_json = ?`,
+		  checker_json = ?`,
 		agent.ID,
 		check.Type,
 		check.Namespace,
-		check.Runner.AsJson(),
+		check.Checker.AsJson(),
 	).Scan(&checkID, &interval)
 	switch {
 	case err == sql.ErrNoRows:
@@ -187,7 +187,7 @@ func (tx *Tx) SaveAgent(name string, tokenHash string) error {
 
 func (db *DB) GetChecks() ([]CheckModel, error) {
 	rows, _ := db.Query(
-		`SELECT c.id, c.type, c.namespace, c.interval, c.runner_json, a.id, a.name FROM checks c
+		`SELECT c.id, c.type, c.namespace, c.interval, c.checker_json, a.id, a.name FROM checks c
 		JOIN agents a ON c.agent_id = a.id`)
 	defer rows.Close()
 
@@ -301,7 +301,7 @@ func (db *DB) GetCheckById(ID int) (CheckModel, error) {
 	var interval int
 	var jsonData []byte
 	err := db.QueryRow(
-		`SELECT c.id, c.type, c.namespace, c.interval, c.runner_json, a.id, a.name
+		`SELECT c.id, c.type, c.namespace, c.interval, c.checker_json, a.id, a.name
 		FROM checks c
 		JOIN agents a ON c.agent_id = a.id
 		WHERE c.id = ?`,

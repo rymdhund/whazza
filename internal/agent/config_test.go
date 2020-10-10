@@ -46,7 +46,7 @@ func TestDeserializeError(t *testing.T) {
 }
 
 func TestDeserializeIgnoreUnknown(t *testing.T) {
-	// No simple way to fail on unknown fields since we parse both Check and CheckRunner from the same json
+	// No simple way to fail on unknown fields since we parse both Check and Checker from the same json
 	// We would really like this to fail
 	input := `{
 		"checks": [

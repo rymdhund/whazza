@@ -1,4 +1,4 @@
-package checking
+package checker
 
 import (
 	"crypto/tls"
@@ -11,35 +11,35 @@ import (
 	"github.com/rymdhund/whazza/internal/base"
 )
 
-type HttpUpCheck struct {
+type HttpUpChecker struct {
 	Host        string `json:"host"`
 	Port        int    `json:"port,omitempty"`
 	StatusCodes []int  `json:"status_codes,omitempty"`
 }
 
-type HttpsUpCheck struct {
-	HttpUpCheck
+type HttpsUpChecker struct {
+	HttpUpChecker
 }
 
-func (c HttpUpCheck) Name() string {
+func (c HttpUpChecker) Name() string {
 	if c.PortOrDefault() != 80 {
 		return fmt.Sprintf("http:%s:%d", c.Host, c.PortOrDefault())
 	}
 	return fmt.Sprintf("http:%s", c.Host)
 }
 
-func (c HttpUpCheck) Type() string {
+func (c HttpUpChecker) Type() string {
 	return "http-up"
 }
 
-func (c HttpUpCheck) Validate() error {
+func (c HttpUpChecker) Validate() error {
 	if c.Host == "" {
 		return errors.New("Empty host in http-up check")
 	}
 	return nil
 }
 
-func (c HttpUpCheck) AsJson() []byte {
+func (c HttpUpChecker) AsJson() []byte {
 	b, err := json.Marshal(c)
 	if err != nil {
 		panic(err)
@@ -47,14 +47,14 @@ func (c HttpUpCheck) AsJson() []byte {
 	return b
 }
 
-func (c HttpUpCheck) PortOrDefault() int {
+func (c HttpUpChecker) PortOrDefault() int {
 	if c.Port == 0 {
 		return 80
 	}
 	return c.Port
 }
 
-func (c HttpUpCheck) Run() base.Result {
+func (c HttpUpChecker) Run() base.Result {
 	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
 	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }
@@ -63,25 +63,25 @@ func (c HttpUpCheck) Run() base.Result {
 // Https methods //
 ///////////////////
 
-func (c HttpsUpCheck) Type() string {
+func (c HttpsUpChecker) Type() string {
 	return "https-up"
 }
 
-func (c HttpsUpCheck) Name() string {
+func (c HttpsUpChecker) Name() string {
 	if c.PortOrDefault() != 443 {
 		return fmt.Sprintf("https:%s:%d", c.Host, c.PortOrDefault())
 	}
 	return fmt.Sprintf("https:%s", c.Host)
 }
 
-func (c HttpsUpCheck) PortOrDefault() int {
+func (c HttpsUpChecker) PortOrDefault() int {
 	if c.Port == 0 {
 		return 443
 	}
 	return c.Port
 }
 
-func (c HttpsUpCheck) Run() base.Result {
+func (c HttpsUpChecker) Run() base.Result {
 	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, true)
 	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }

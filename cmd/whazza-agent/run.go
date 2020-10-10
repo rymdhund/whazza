@@ -77,7 +77,7 @@ func run() {
 		fmt.Printf("running check %+v\n", next.check)
 
 		go func() {
-			res := next.check.Runner.Run()
+			res := next.check.Checker.Run()
 			checkResult := messages.NewCheckResultMsg(next.check, res)
 			err = agent.SendCheckResult(cfg, checkResult)
 			if err != nil {

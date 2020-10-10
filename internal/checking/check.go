@@ -10,7 +10,7 @@ import (
 
 type Check struct {
 	checkBase
-	Runner CheckRunner
+	Checker Checker
 }
 
 type checkBase struct {
@@ -19,7 +19,7 @@ type checkBase struct {
 	Interval  int    `json:"interval"`
 }
 
-type CheckRunner interface {
+type Checker interface {
 	Type() string
 	Name() string
 	Run() base.Result
@@ -31,11 +31,11 @@ func (c Check) Validate() error {
 	if c.Interval <= 0 {
 		return fmt.Errorf("Invalid interval: %d", c.Interval)
 	}
-	return c.Runner.Validate()
+	return c.Checker.Validate()
 }
 
 func (c Check) Name() string {
-	return c.Runner.Name()
+	return c.Checker.Name()
 }
 
 // IsExpired returns true if the check is expired
@@ -53,7 +53,7 @@ func (c Check) IsExpired(lastResult time.Time, now time.Time) bool {
 	return lastResult.Add(limit).Before(now)
 }
 
-func New(checkType, namespace string, interval int, runnerJson []byte) (Check, error) {
+func New(checkType, namespace string, interval int, checkerJson []byte) (Check, error) {
 	check := Check{
 		checkBase{
 			Type:      checkType,
@@ -63,14 +63,14 @@ func New(checkType, namespace string, interval int, runnerJson []byte) (Check, e
 		nil,
 	}
 
-	runner, err := unmarshalRunner(checkType, runnerJson)
+	checker, err := unmarshalChecker(checkType, checkerJson)
 	if err != nil {
 		return check, err
 	}
-	check.Runner = runner
+	check.Checker = checker
 	return check, nil
 }
 
 func Equal(c1, c2 Check) bool {
-	return c1.checkBase == c2.checkBase && bytes.Equal(c1.Runner.AsJson(), c2.Runner.AsJson())
+	return c1.checkBase == c2.checkBase && bytes.Equal(c1.Checker.AsJson(), c2.Checker.AsJson())
 }
