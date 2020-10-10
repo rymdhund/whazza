@@ -53,14 +53,21 @@ func unmarshalChecker(typ string, jsonData []byte) (Checker, error) {
 		var checker checker.HttpUpChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
+			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
 		}
 		return checker, nil
 	case "https-up":
 		var checker checker.HttpsUpChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
-			return nil, fmt.Errorf("Error parsing http-up check: %w", err)
+			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
+		}
+		return checker, nil
+	case "cert":
+		var checker checker.CertChecker
+		err := json.Unmarshal(jsonData, &checker)
+		if err != nil {
+			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
 		}
 		return checker, nil
 	default:

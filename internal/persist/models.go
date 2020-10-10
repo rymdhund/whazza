@@ -38,8 +38,8 @@ func (o *CheckOverview) Show() string {
 	now := time.Now()
 
 	extra := ""
-	if o.LastReceived.Status == "fail" {
-		extra = fmt.Sprintf(" last fail: %s", utils.HumanRelTime(now, o.LastFail.Timestamp, false))
+	if o.Result.Status == "fail" {
+		extra = fmt.Sprintf(" | %s | last good: %s", o.Result.StatusMsg, utils.HumanRelTime(now, o.LastGood.Timestamp, false))
 	}
 
 	return fmt.Sprintf("[%s] %s | %s | %s%s",
