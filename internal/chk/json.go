@@ -1,14 +1,14 @@
-package checking
+package chk
 
 import (
 	"encoding/json"
 	"fmt"
 
-	"github.com/rymdhund/whazza/internal/checking/checker"
+	"github.com/rymdhund/whazza/internal/chk/checker"
 )
 
 func (c Check) MarshalJSON() ([]byte, error) {
-	// A bit of a hack
+	// We need to parse the same json into both the check and the checker
 	bs, err := json.Marshal(c.Checker)
 	if err != nil {
 		return nil, err

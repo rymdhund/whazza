@@ -5,12 +5,12 @@ import (
 	"testing"
 
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 )
 
 func TestDeserializeXX(t *testing.T) {
 	msg := NewCheckResultMsg(
-		checking.Check{},
+		chk.Check{},
 		base.Result{},
 	)
 	msg.Check.Type = "http-up"

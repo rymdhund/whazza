@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/agent"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 	"github.com/rymdhund/whazza/internal/messages"
 )
 
 // Priority queue implementation
 type timedCheck struct {
-	check checking.Check
+	check chk.Check
 	time  time.Time
 }
 

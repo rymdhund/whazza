@@ -11,7 +11,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -107,10 +107,10 @@ func generateToken() (string, error) {
 	return string(key), nil
 }
 
-func ParseChecksConfig(input io.Reader) ([]checking.Check, error) {
+func ParseChecksConfig(input io.Reader) ([]chk.Check, error) {
 	type checkConfig struct {
-		DefaultInterval int              `json:"default_interval"`
-		Checks          []checking.Check `json:"checks"`
+		DefaultInterval int         `json:"default_interval"`
+		Checks          []chk.Check `json:"checks"`
 	}
 
 	var config checkConfig

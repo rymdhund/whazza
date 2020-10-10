@@ -9,7 +9,7 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 	"github.com/rymdhund/whazza/internal/hubutil"
 	"github.com/rymdhund/whazza/internal/messages"
 	"github.com/rymdhund/whazza/internal/monitor"
@@ -112,7 +112,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 	}
 }
 
-func saveResult(agent persist.AgentModel, check checking.Check, result base.Result, mon *monitor.Monitor) error {
+func saveResult(agent persist.AgentModel, check chk.Check, result base.Result, mon *monitor.Monitor) error {
 	db, err := persist.Open(Config.Database())
 	if err != nil {
 		return fmt.Errorf("Couldn't open db: %w", err)

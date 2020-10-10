@@ -1,4 +1,4 @@
-package checking
+package chk
 
 import (
 	"testing"

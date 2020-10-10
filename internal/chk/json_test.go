@@ -1,10 +1,10 @@
-package checking
+package chk
 
 import (
 	"encoding/json"
 	"testing"
 
-	"github.com/rymdhund/whazza/internal/checking/checker"
+	"github.com/rymdhund/whazza/internal/chk/checker"
 )
 
 func TestUnmarshal(t *testing.T) {

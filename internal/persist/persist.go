@@ -6,7 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3" // sqlite
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
@@ -91,7 +91,7 @@ func (db *DB) Init() error {
 	return nil
 }
 
-func (tx *Tx) AddCheck(agent AgentModel, check checking.Check) (CheckModel, error) {
+func (tx *Tx) AddCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
 	res, err := tx.Exec(
 		`INSERT INTO checks
 		(agent_id, type, namespace, interval, checker_json)
@@ -105,7 +105,7 @@ func (tx *Tx) AddCheck(agent AgentModel, check checking.Check) (CheckModel, erro
 	return CheckModel{int(id), check, agent}, nil
 }
 
-func (tx *Tx) RegisterCheck(agent AgentModel, check checking.Check) (CheckModel, error) {
+func (tx *Tx) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
 	var (
 		checkID  int64
 		interval int
@@ -210,7 +210,7 @@ func (db *DB) GetChecks() ([]CheckModel, error) {
 		if err != nil {
 			return nil, err
 		}
-		c.Check, err = checking.New(typ, namespace, interval, jsonData)
+		c.Check, err = chk.New(typ, namespace, interval, jsonData)
 		if err != nil {
 			return nil, err
 		}
@@ -319,7 +319,7 @@ func (db *DB) GetCheckById(ID int) (CheckModel, error) {
 		return c, err
 	}
 
-	c.Check, err = checking.New(typ, namespace, interval, jsonData)
+	c.Check, err = chk.New(typ, namespace, interval, jsonData)
 	if err != nil {
 		return c, err
 	}

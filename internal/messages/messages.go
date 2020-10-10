@@ -4,16 +4,16 @@ import (
 	"fmt"
 
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 )
 
 // Messages from agent
 type CheckResultMsg struct {
-	Check  checking.Check
+	Check  chk.Check
 	Result base.Result
 }
 
-func NewCheckResultMsg(check checking.Check, result base.Result) CheckResultMsg {
+func NewCheckResultMsg(check chk.Check, result base.Result) CheckResultMsg {
 	return CheckResultMsg{
 		Check:  check,
 		Result: result,

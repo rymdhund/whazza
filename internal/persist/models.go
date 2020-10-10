@@ -5,7 +5,7 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 	"github.com/rymdhund/whazza/internal/utils"
 )
 
@@ -16,7 +16,7 @@ type AgentModel struct {
 
 type CheckModel struct {
 	ID    int
-	Check checking.Check
+	Check chk.Check
 	Agent AgentModel
 }
 

@@ -64,14 +64,14 @@ func (m *Monitor) CheckForExpired() error {
 	if err != nil {
 		return err
 	}
-	for _, chk := range expChecks {
-		lastStatus, err := db.LastNotification(chk.ID)
+	for _, check := range expChecks {
+		lastStatus, err := db.LastNotification(check.ID)
 		if err != nil {
 			return err
 		}
 
 		if lastStatus != "expired" {
-			err := m.notify(db, chk, base.Result{Status: "expired", Timestamp: time.Now()})
+			err := m.notify(db, check, base.Result{Status: "expired", Timestamp: time.Now()})
 			if err != nil {
 				return err
 			}

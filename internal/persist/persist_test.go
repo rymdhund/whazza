@@ -3,7 +3,7 @@ package persist
 import (
 	"testing"
 
-	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/chk"
 )
 
 func TestCreateCheck(t *testing.T) {
@@ -23,7 +23,7 @@ func TestCreateCheck(t *testing.T) {
 	if err = tx.SaveAgent(agent.Name, ""); err != nil {
 		t.Fatal(err)
 	}
-	check, err := checking.New("http-up", "ns", 3, []byte(`{"host":"example.com"}`))
+	check, err := chk.New("http-up", "ns", 3, []byte(`{"host":"example.com"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestCreateCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !checking.Equal(checkModel.Check, cm.Check) {
+	if !chk.Equal(checkModel.Check, cm.Check) {
 		t.Errorf("%v != %v", checkModel.Check, cm.Check)
 	}
 }
