@@ -6,6 +6,7 @@ import (
 
 	_ "github.com/mattn/go-sqlite3" // sqlite
 	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/checking"
 	"github.com/rymdhund/whazza/internal/sectoken"
 )
 
@@ -51,10 +52,10 @@ func (db *DB) Init() error {
 	CREATE TABLE IF NOT EXISTS checks (
 		id INTEGER PRIMARY KEY,
 		agent_id INTEGER NOT NULL,
-		check_type TEXT NOT NULL,
+		type TEXT NOT NULL,
 		namespace TEXT NOT NULL,
-		params_encoded TEXT NOT NULL,
 		interval INTEGER NOT NULL,
+		runner_json JSON NOT NULL,
 		FOREIGN KEY(agent_id) REFERENCES agents(id)
 	)
 	`)
@@ -90,12 +91,12 @@ func (db *DB) Init() error {
 	return nil
 }
 
-func (tx *Tx) AddCheck(agent AgentModel, check base.Check) (CheckModel, error) {
+func (tx *Tx) AddCheck(agent AgentModel, check checking.Check) (CheckModel, error) {
 	res, err := tx.Exec(
 		`INSERT INTO checks
-		(agent_id, check_type, namespace, params_encoded, interval)
+		(agent_id, type, namespace, interval, runner_json)
 		VALUES (?, ?, ?, ?, ?)`,
-		agent.ID, check.CheckType, check.Namespace, check.ParamsEncoded(), check.Interval)
+		agent.ID, check.Type, check.Namespace, check.Interval, check.Runner.AsJson())
 	if err != nil {
 		return CheckModel{}, err
 	}
@@ -104,17 +105,21 @@ func (tx *Tx) AddCheck(agent AgentModel, check base.Check) (CheckModel, error) {
 	return CheckModel{int(id), check, agent}, nil
 }
 
-func (tx *Tx) RegisterCheck(agent AgentModel, check base.Check) (CheckModel, error) {
+func (tx *Tx) RegisterCheck(agent AgentModel, check checking.Check) (CheckModel, error) {
 	var (
 		checkID  int64
 		interval int
 	)
 	err := tx.QueryRow(
-		"SELECT id, interval FROM checks WHERE check_type = ? AND namespace = ? AND params_encoded = ? AND agent_id = ?",
-		check.CheckType,
-		check.Namespace,
-		check.ParamsEncoded(),
+		`SELECT id, interval FROM checks WHERE
+		  agent_id = ? AND
+		  type = ? AND
+		  namespace = ? AND
+		  runner_json = ?`,
 		agent.ID,
+		check.Type,
+		check.Namespace,
+		check.Runner.AsJson(),
 	).Scan(&checkID, &interval)
 	switch {
 	case err == sql.ErrNoRows:
@@ -182,20 +187,33 @@ func (tx *Tx) SaveAgent(name string, tokenHash string) error {
 
 func (db *DB) GetChecks() ([]CheckModel, error) {
 	rows, _ := db.Query(
-		`SELECT c.id, c.check_type, c.namespace, c.params_encoded, interval, a.id, a.name FROM checks c
-		LEFT JOIN agents a ON c.agent_id = a.id`)
+		`SELECT c.id, c.type, c.namespace, c.interval, c.runner_json, a.id, a.name FROM checks c
+		JOIN agents a ON c.agent_id = a.id`)
 	defer rows.Close()
 
 	checks := make([]CheckModel, 0)
 
 	for rows.Next() {
 		var c CheckModel
-		var params []byte
-		err := rows.Scan(&c.ID, &c.CheckType, &c.Namespace, &params, &c.Interval, &c.Agent.ID, &c.Agent.Name)
+		var typ, namespace string
+		var interval int
+		var jsonData []byte
+		err := rows.Scan(
+			&c.ID,
+			&typ,
+			&namespace,
+			&interval,
+			&jsonData,
+			&c.Agent.ID,
+			&c.Agent.Name,
+		)
 		if err != nil {
 			return nil, err
 		}
-		c.CheckParams = base.DecodeParams(params)
+		c.Check, err = checking.New(typ, namespace, interval, jsonData)
+		if err != nil {
+			return nil, err
+		}
 		checks = append(checks, c)
 	}
 	return checks, nil
@@ -248,7 +266,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 
 	var result base.Result
 	if (lastRes != base.Result{}) {
-		if lastRes.Timestamp.Add(time.Duration(check.Interval+300) * time.Second).Before(time.Now()) {
+		if lastRes.Timestamp.Add(time.Duration(check.Check.Interval+300) * time.Second).Before(time.Now()) {
 			result = base.Result{Status: "expired", Timestamp: time.Now()}
 		} else {
 			result = lastRes
@@ -257,7 +275,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 		result = base.Result{Status: "nodata", Timestamp: time.Now()}
 	}
 
-	return CheckOverview{Check: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
+	return CheckOverview{CheckModel: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
 }
 
 func (db *DB) GetCheckOverviews() ([]CheckOverview, error) {
@@ -278,17 +296,33 @@ func (db *DB) GetCheckOverviews() ([]CheckOverview, error) {
 
 func (db *DB) GetCheckById(ID int) (CheckModel, error) {
 	var c CheckModel
-	var params []byte
+	var typ, namespace string
+	var interval int
+	var jsonData []byte
 	err := db.QueryRow(
-		`SELECT c.id, c.check_type, c.namespace, c.params_encoded, interval, a.id, a.name FROM checks c
-		LEFT JOIN agents a ON c.agent_id = a.id`,
-	).Scan(&c.ID, &c.CheckType, &c.Namespace, &params, &c.Interval, &c.Agent.ID, &c.Agent.Name)
-
+		`SELECT c.id, c.type, c.namespace, c.interval, c.runner_json, a.id, a.name
+		FROM checks c
+		JOIN agents a ON c.agent_id = a.id
+		WHERE c.id = ?`,
+		ID,
+	).Scan(
+		&c.ID,
+		&typ,
+		&namespace,
+		&interval,
+		&jsonData,
+		&c.Agent.ID,
+		&c.Agent.Name,
+	)
 	if err != nil {
-		return CheckModel{}, err
+		return c, err
 	}
 
-	c.CheckParams = base.DecodeParams(params)
+	c.Check, err = checking.New(typ, namespace, interval, jsonData)
+	if err != nil {
+		return c, err
+	}
+
 	return c, nil
 }
 
@@ -301,7 +335,7 @@ func (db *DB) GetExpiredChecks() ([]CheckModel, error) {
 	expired := []CheckModel{}
 	for _, ov := range overviews {
 		if ov.Result.Status == "expired" {
-			expired = append(expired, ov.Check)
+			expired = append(expired, ov.CheckModel)
 		}
 	}
 

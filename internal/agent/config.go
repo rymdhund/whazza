@@ -5,12 +5,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"math/big"
 	"os"
 	"path"
 
-	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/checking"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
@@ -107,62 +107,20 @@ func generateToken() (string, error) {
 	return string(key), nil
 }
 
-func normalizeCheck(chk *base.Check, defaultInterval int) error {
-	if chk.CheckType == "" {
-		return errors.New("Empty check type")
-	}
-	if chk.Interval <= 0 {
-		return errors.New("Invalid interval")
-	}
-	if chk.Interval == 0 {
-		chk.Interval = defaultInterval
-	}
-	meta, err := checking.GetCheckMeta(chk.CheckType)
-	if err != nil {
-		return err
-	}
-	_, err = meta.ParseParams(*chk)
-	if err != nil {
-		return err
-	}
-	if chk.Namespace == "" {
-		chk.Namespace = meta.DefaultNamespace(*chk)
-	}
-	return nil
-}
-
-// ReadChecksConfig reads check configuration from a file
-func ReadChecksConfig(filename string) ([]base.Check, error) {
-	f, err := os.Open(filename)
-	if err != nil {
-		return nil, err
-	}
-	defer f.Close()
-
+func ParseChecksConfig(input io.Reader) ([]checking.Check, error) {
 	type checkConfig struct {
-		DefaultInterval int          `json:"default_interval"`
-		Checks          []base.Check `json:"checks"`
+		DefaultInterval int              `json:"default_interval"`
+		Checks          []checking.Check `json:"checks"`
 	}
 
 	var config checkConfig
 
-	decoder := json.NewDecoder(f)
+	decoder := json.NewDecoder(input)
 	decoder.DisallowUnknownFields()
-	err = decoder.Decode(&config)
+	err := decoder.Decode(&config)
 	if err != nil {
-		panic(err)
 		return nil, err
 	}
 
-	defaultInterval := config.DefaultInterval
-	if defaultInterval <= 0 {
-		defaultInterval = 60
-	}
-	for i := range config.Checks {
-		err = normalizeCheck(&config.Checks[i], defaultInterval)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return config.Checks, err
+	return config.Checks, nil
 }

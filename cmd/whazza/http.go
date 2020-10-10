@@ -9,7 +9,9 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/checking"
 	"github.com/rymdhund/whazza/internal/hubutil"
+	"github.com/rymdhund/whazza/internal/messages"
 	"github.com/rymdhund/whazza/internal/monitor"
 	"github.com/rymdhund/whazza/internal/persist"
 	"github.com/rymdhund/whazza/internal/sectoken"
@@ -81,9 +83,8 @@ func mkResultHandler(mon *monitor.Monitor) AuthHandlerFunc {
 func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentModel, mon *monitor.Monitor) {
 	switch r.Method {
 	case "POST":
-		log.Print("Got result")
 		decoder := json.NewDecoder(r.Body)
-		var checkResult base.CheckResultMsg
+		var checkResult messages.CheckResultMsg
 		err := decoder.Decode(&checkResult)
 		if err != nil {
 			log.Printf("Error decoding checkresult: %s", err)
@@ -98,7 +99,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 			return
 		}
 
-		err = saveResult(agent, checkResult, mon)
+		err = saveResult(agent, checkResult.Check, checkResult.Result, mon)
 
 		if err != nil {
 			log.Printf("Error saving checkresult: %s", err)
@@ -111,7 +112,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 	}
 }
 
-func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *monitor.Monitor) error {
+func saveResult(agent persist.AgentModel, check checking.Check, result base.Result, mon *monitor.Monitor) error {
 	db, err := persist.Open(Config.Database())
 	if err != nil {
 		return fmt.Errorf("Couldn't open db: %w", err)
@@ -123,13 +124,13 @@ func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *mon
 	}
 
 	// register check if not exists
-	check, err := tx.RegisterCheck(agent, checkRes.Check)
+	checkModel, err := tx.RegisterCheck(agent, check)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("Couldn't register check: %w", err)
 	}
 
-	res, err := tx.AddResult(agent, check, checkRes.Result)
+	res, err := tx.AddResult(agent, checkModel, result)
 	if err != nil {
 		tx.Rollback()
 		return fmt.Errorf("Couldn't add result: %w", err)
@@ -137,7 +138,7 @@ func saveResult(agent persist.AgentModel, checkRes base.CheckResultMsg, mon *mon
 	tx.Commit()
 
 	go func() {
-		err := mon.HandleResult(check, res)
+		err := mon.HandleResult(checkModel, res)
 		if err != nil {
 			log.Printf("Got error from monitor: %s", err)
 		}

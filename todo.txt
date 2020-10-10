@@ -1,4 +1,5 @@
 TODO:
+- Make a check expire after (Interval / 2), but at least 10min and at most 4h
 - Bug: Error saving checkresult: Couldn't add result: database is locked
 - cert-check to see that cert is good and doesnt expire in $n days
 - Agent should fetch last run for checks from hub

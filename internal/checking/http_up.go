@@ -2,6 +2,7 @@ package checking
 
 import (
 	"crypto/tls"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/http"
@@ -10,29 +11,48 @@ import (
 	"github.com/rymdhund/whazza/internal/base"
 )
 
-type HttpUpCheckMeta struct{}
-
-type HttpCheckParams struct {
-	Host        string
-	Port        int
-	StatusCodes []int
+type HttpUpCheck struct {
+	Host        string `json:"host"`
+	Port        int    `json:"port,omitempty"`
+	StatusCodes []int  `json:"status_codes,omitempty"`
 }
 
-func (m HttpUpCheckMeta) DoCheck(chk base.Check) base.Result {
-	var status, msg string
+func (c HttpUpCheck) Name() string {
+	return "http-up"
+}
 
-	params, err := m.ParseParams(chk)
-	if err != nil {
-		panic("couldn't parse params")
+func (c HttpUpCheck) Type() string {
+	return "http-up"
+}
+
+func (c HttpUpCheck) Validate() error {
+	if c.Host == "" {
+		return errors.New("Empty host in http-up check")
 	}
+	return nil
+}
 
-	https := chk.CheckType == "https-up"
+func (c HttpUpCheck) AsJson() []byte {
+	b, err := json.Marshal(c)
+	if err != nil {
+		panic(err)
+	}
+	return b
+}
 
-	status, msg = httpCheck(params.(HttpCheckParams), https)
+func (c HttpUpCheck) PortOrDefault() int {
+	if c.Port == 0 {
+		return 80
+	}
+	return c.Port
+}
+
+func (c HttpUpCheck) Run() base.Result {
+	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
 	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
 }
 
-func httpCheck(params HttpCheckParams, https bool) (string, string) {
+func httpCheck(host string, port int, statusCodes []int, https bool) (string, string) {
 	// Dont follow redirects and allow bad certs
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -44,16 +64,16 @@ func httpCheck(params HttpCheckParams, https bool) (string, string) {
 	}
 	var url string
 	if https {
-		if params.Port == 443 {
-			url = fmt.Sprintf("https://%s/", params.Host)
+		if port == 443 {
+			url = fmt.Sprintf("https://%s/", host)
 		} else {
-			url = fmt.Sprintf("https://%s:%d/", params.Host, params.Port)
+			url = fmt.Sprintf("https://%s:%d/", host, port)
 		}
 	} else {
-		if params.Port == 80 {
-			url = fmt.Sprintf("http://%s/", params.Host)
+		if port == 80 {
+			url = fmt.Sprintf("http://%s/", host)
 		} else {
-			url = fmt.Sprintf("http://%s:%d/", params.Host, params.Port)
+			url = fmt.Sprintf("http://%s:%d/", host, port)
 		}
 	}
 	resp, err := client.Get(url)
@@ -61,9 +81,9 @@ func httpCheck(params HttpCheckParams, https bool) (string, string) {
 	if err != nil {
 		return "fail", err.Error()
 	}
-	if params.StatusCodes != nil {
+	if statusCodes != nil {
 		contains := false
-		for _, c := range params.StatusCodes {
+		for _, c := range statusCodes {
 			if resp.StatusCode == c {
 				contains = true
 			}
@@ -87,62 +107,4 @@ func GetJsonInt(i interface{}) (int, error) {
 	default:
 		return 0, errors.New("Field is not int")
 	}
-}
-
-func (m HttpUpCheckMeta) ParseParams(chk base.Check) (interface{}, error) {
-	var ret HttpCheckParams
-
-	h, ok := chk.CheckParams["host"]
-	if !ok {
-		return nil, errors.New("No host in http-up check")
-	} else {
-		switch h.(type) {
-		case string:
-			ret.Host = h.(string)
-		default:
-			return nil, errors.New("Host is not string in http-up check")
-		}
-	}
-
-	p, ok := chk.CheckParams["port"]
-	if !ok {
-		if chk.CheckType == "https-up" {
-			ret.Port = 443
-		} else {
-			ret.Port = 80
-		}
-	} else {
-		port, err := GetJsonInt(p)
-		if err != nil {
-			return nil, errors.New("Invalid port in http-up check")
-		}
-		ret.Port = port
-	}
-
-	sc, ok := chk.CheckParams["status_codes"]
-	if !ok {
-		// let statuscodes be nil as default
-	} else {
-		switch sc.(type) {
-		case []interface{}:
-			sc2 := sc.([]interface{})
-			codes := make([]int, len(sc2))
-			for i, c := range sc2 {
-				n, err := GetJsonInt(c)
-				if err != nil {
-					return nil, errors.New("Invalid StatusCodes in http-up check")
-				}
-				codes[i] = n
-			}
-			ret.StatusCodes = codes
-		default:
-			return nil, errors.New("StatusCodes is not a list in http-up check")
-		}
-	}
-
-	return ret, nil
-}
-
-func (m HttpUpCheckMeta) DefaultNamespace(chk base.Check) string {
-	return chk.CheckParams["host"].(string)
 }

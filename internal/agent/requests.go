@@ -8,7 +8,7 @@ import (
 	"io/ioutil"
 	"net/http"
 
-	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/messages"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -48,7 +48,7 @@ func Ping(cfg Config) error {
 	}
 }
 
-func SendCheckResult(cfg Config, msg base.CheckResultMsg) error {
+func SendCheckResult(cfg Config, msg messages.CheckResultMsg) error {
 	client := tofu.HttpClient(cfg.ServerCertFingerprint)
 
 	url := fmt.Sprintf("https://%s:%d/agent/result", cfg.ServerHost, cfg.ServerPort)

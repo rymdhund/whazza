@@ -1,0 +1,10 @@
+{
+  "checks": [
+    {
+      "type": "http-up",
+      "namespace": "example.com",
+      "interval": 10,
+      "host": "example.com"
+    }
+  ]
+}

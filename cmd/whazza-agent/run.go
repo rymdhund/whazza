@@ -8,13 +8,13 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/agent"
-	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/checking"
+	"github.com/rymdhund/whazza/internal/messages"
 )
 
 // Priority queue implementation
 type timedCheck struct {
-	check base.Check
+	check checking.Check
 	time  time.Time
 }
 
@@ -46,7 +46,12 @@ func (pq *PriorityQueue) Pop() interface{} {
 
 func run() {
 	cfg := readConf()
-	checks, err := agent.ReadChecksConfig(checksConfigFile())
+	f, err := os.Open(checksConfigFile())
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
+		os.Exit(1)
+	}
+	checks, err := agent.ParseChecksConfig(f)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
 		os.Exit(1)
@@ -72,9 +77,8 @@ func run() {
 		fmt.Printf("running check %+v\n", next.check)
 
 		go func() {
-			meta, _ := checking.GetCheckMeta(next.check.CheckType)
-			res := meta.DoCheck(next.check)
-			checkResult := base.CheckResultMsg{Check: next.check, Result: res}
+			res := next.check.Runner.Run()
+			checkResult := messages.NewCheckResultMsg(next.check, res)
 			err = agent.SendCheckResult(cfg, checkResult)
 			if err != nil {
 				log.Printf("Error: couldn't send result: %s", err)

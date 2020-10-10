@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
+	"github.com/rymdhund/whazza/internal/checking"
 )
 
 type AgentModel struct {
@@ -13,8 +14,8 @@ type AgentModel struct {
 }
 
 type CheckModel struct {
-	ID int
-	base.Check
+	ID    int
+	Check checking.Check
 	Agent AgentModel
 }
 
@@ -25,14 +26,14 @@ type ResultModel struct {
 }
 
 type CheckOverview struct {
-	Check        CheckModel
+	CheckModel   CheckModel
 	Result       base.Result
 	LastReceived base.Result
 	LastGood     base.Result
 	LastFail     base.Result
 }
 
-func (st *CheckOverview) Show() string {
+func (o *CheckOverview) Show() string {
 	timestring := func(t time.Time) string {
 		if (t != time.Time{}) {
 			return t.Format(time.RFC3339)
@@ -41,12 +42,12 @@ func (st *CheckOverview) Show() string {
 		}
 	}
 	return fmt.Sprintf("[%s] <%s> %s, last-res: %s, last-good: %s, last-fail: %s, interval: %d",
-		st.Check.Namespace,
-		st.Result.Status,
-		st.Check.Name(),
-		timestring(st.LastReceived.Timestamp),
-		timestring(st.LastGood.Timestamp),
-		timestring(st.LastFail.Timestamp),
-		st.Check.Interval,
+		o.CheckModel.Check.Namespace,
+		o.Result.Status,
+		o.CheckModel.Check.Type,
+		timestring(o.LastReceived.Timestamp),
+		timestring(o.LastGood.Timestamp),
+		timestring(o.LastFail.Timestamp),
+		o.CheckModel.Check.Interval,
 	)
 }
