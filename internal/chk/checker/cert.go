@@ -12,8 +12,9 @@ import (
 )
 
 type CertChecker struct {
-	Host string `json:"host"`
-	Port int    `json:"port,omitempty"`
+	Host            string `json:"host"`
+	Port            int    `json:"port,omitempty"`
+	ExpiresSoonDays int    `json:"expires_soon_days,omitempty"`
 }
 
 func (c CertChecker) Name() string {
@@ -47,6 +48,13 @@ func (c CertChecker) portOrDefault() int {
 		return 443
 	}
 	return c.Port
+}
+
+func (c CertChecker) expiresSoonDaysOrDefault() int {
+	if c.ExpiresSoonDays == 0 {
+		return 20
+	}
+	return c.ExpiresSoonDays
 }
 
 func (c CertChecker) Run() base.Result {
@@ -85,7 +93,7 @@ func (c CertChecker) verifyCert(crt *x509.Certificate, now time.Time) (bool, str
 	_, err := crt.Verify(opts)
 	if err == nil {
 		toExpiry := now.Sub(crt.NotAfter)
-		if toExpiry < time.Duration(30*24)*time.Hour {
+		if toExpiry < time.Duration(c.expiresSoonDaysOrDefault()*24)*time.Hour {
 			return false, fmt.Sprintf("Cert expires in %d days", int(toExpiry.Hours()/24))
 		}
 
