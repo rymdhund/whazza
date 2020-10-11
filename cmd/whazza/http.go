@@ -91,7 +91,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 			http.Error(w, "400 Bad Request. Invalid data", http.StatusBadRequest)
 			return
 		}
-		fmt.Printf("Got check result: %+v\n", checkResult)
+		fmt.Printf("Got check result: %s - %s\n", checkResult.Check.Name(), checkResult.Result.Status)
 		ok, e := checkResult.Validate()
 		if !ok {
 			log.Printf("Invalid checkresult: %s", e)
@@ -118,24 +118,17 @@ func saveResult(agent persist.AgentModel, check chk.Check, result base.Result, m
 		return fmt.Errorf("Couldn't open db: %w", err)
 	}
 	defer db.Close()
-	tx, err := db.Begin()
-	if err != nil {
-		return fmt.Errorf("Couldn't begin transaction db: %w", err)
-	}
 
 	// register check if not exists
-	checkModel, err := tx.RegisterCheck(agent, check)
+	checkModel, err := db.RegisterCheck(agent, check)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("Couldn't register check: %w", err)
 	}
 
-	res, err := tx.AddResult(agent, checkModel, result)
+	res, err := db.AddResult(agent, checkModel, result)
 	if err != nil {
-		tx.Rollback()
 		return fmt.Errorf("Couldn't add result: %w", err)
 	}
-	tx.Commit()
 
 	go func() {
 		err := mon.HandleResult(checkModel, res)

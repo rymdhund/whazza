@@ -68,7 +68,7 @@ func (c CertChecker) verifyCerts() (string, string) {
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
-		return "", err.Error()
+		return "fail", err.Error()
 	}
 	defer conn.Close()
 

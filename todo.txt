@@ -1,13 +1,14 @@
 TODO:
-- Bug: Error saving checkresult: Couldn't add result: database is locked
 - cert-check to see that cert is good and doesnt expire in $n days
 - Agent should fetch last run for checks from hub
 - Use env WHAZZA_DATA_DIR for hub generated key, cert and db files
 - Serve webpage for health overview (needs users etc)
 - when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
+- Add "error" status for when the checker is not able to run correctly, eg no internet connection etc
 
 
 Done
+- Bug: Error saving checkresult: Couldn't add result: database is locked
 - Rename http-up-check to http-up-checker
 - Make a check expire after (Interval / 2), but at least 10min and at most 4h
 - Make all parameters in json snake_case

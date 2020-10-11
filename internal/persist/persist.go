@@ -2,6 +2,7 @@ package persist
 
 import (
 	"database/sql"
+	"fmt"
 	"time"
 
 	_ "github.com/mattn/go-sqlite3" // sqlite
@@ -20,11 +21,21 @@ type Tx struct {
 
 // Open returns a DB reference for a data source.
 func Open(filename string) (*DB, error) {
-	db, err := sql.Open("sqlite3", filename)
+	connString := fmt.Sprintf("file:%s?_busy_timeout=10000&cache=shared&mode=rwc&_journal_mode=WAL", filename)
+	db, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		return nil, err
 	}
 	return &DB{db}, nil
+}
+
+func OpenMemory() (*DB, error) {
+	db, err := sql.Open("sqlite3", ":memory:")
+	if err != nil {
+		return nil, err
+	}
+	return &DB{db}, nil
+
 }
 
 // Begin starts an returns a new transaction.
@@ -64,6 +75,13 @@ func (db *DB) Init() error {
 	}
 
 	_, err = db.Exec(`
+		CREATE UNIQUE INDEX IF NOT EXISTS idx_checks_big ON checks(agent_id, type, namespace, checker_json)
+	`)
+	if err != nil {
+		return err
+	}
+
+	_, err = db.Exec(`
 	CREATE TABLE IF NOT EXISTS results (
 		id INTEGER PRIMARY KEY,
 		check_id INTEGER NOT NULL,
@@ -91,8 +109,8 @@ func (db *DB) Init() error {
 	return nil
 }
 
-func (tx *Tx) AddCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
-	res, err := tx.Exec(
+func (db *DB) AddCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
+	res, err := db.Exec(
 		`INSERT INTO checks
 		(agent_id, type, namespace, interval, checker_json)
 		VALUES (?, ?, ?, ?, ?)`,
@@ -105,12 +123,12 @@ func (tx *Tx) AddCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
 	return CheckModel{int(id), check, agent}, nil
 }
 
-func (tx *Tx) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
+func (db *DB) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, error) {
 	var (
 		checkID  int64
 		interval int
 	)
-	err := tx.QueryRow(
+	err := db.QueryRow(
 		`SELECT id, interval FROM checks WHERE
 		  agent_id = ? AND
 		  type = ? AND
@@ -123,7 +141,7 @@ func (tx *Tx) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, erro
 	).Scan(&checkID, &interval)
 	switch {
 	case err == sql.ErrNoRows:
-		checkModel, err := tx.AddCheck(agent, check)
+		checkModel, err := db.AddCheck(agent, check)
 		if err != nil {
 			return CheckModel{}, err
 		}
@@ -133,7 +151,7 @@ func (tx *Tx) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, erro
 	default:
 		// Update interval if changed
 		if interval != check.Interval {
-			_, err := tx.Exec("UPDATE checks SET interval = ? WHERE id = ?", check.Interval, checkID)
+			_, err := db.Exec("UPDATE checks SET interval = ? WHERE id = ?", check.Interval, checkID)
 			if err != nil {
 				return CheckModel{}, err
 			}
@@ -143,8 +161,8 @@ func (tx *Tx) RegisterCheck(agent AgentModel, check chk.Check) (CheckModel, erro
 	}
 }
 
-func (tx *Tx) AddResult(agent AgentModel, check CheckModel, res base.Result) (ResultModel, error) {
-	r, err := tx.Exec(
+func (db *DB) AddResult(agent AgentModel, check CheckModel, res base.Result) (ResultModel, error) {
+	r, err := db.Exec(
 		`INSERT INTO results
 		(check_id, status, status_msg, timestamp)
 		VALUES (?, ?, ?, ?)`,
@@ -172,8 +190,8 @@ func (db *DB) AuthenticateAgent(name string, token sectoken.SecToken) (AgentMode
 	}
 }
 
-func (tx *Tx) SaveAgent(name string, tokenHash string) error {
-	_, err := tx.Exec(
+func (db *DB) SaveAgent(name string, tokenHash string) error {
+	_, err := db.Exec(
 		`INSERT INTO agents
 		(name, token_hash)
 		VALUES (?, ?)
@@ -186,9 +204,12 @@ func (tx *Tx) SaveAgent(name string, tokenHash string) error {
 }
 
 func (db *DB) GetChecks() ([]CheckModel, error) {
-	rows, _ := db.Query(
+	rows, err := db.Query(
 		`SELECT c.id, c.type, c.namespace, c.interval, c.checker_json, a.id, a.name FROM checks c
 		JOIN agents a ON c.agent_id = a.id`)
+	if err != nil {
+		return nil, err
+	}
 	defer rows.Close()
 
 	checks := make([]CheckModel, 0)

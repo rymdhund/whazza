@@ -7,7 +7,7 @@ import (
 )
 
 func TestCreateCheck(t *testing.T) {
-	db, err := Open(":memory:")
+	db, err := OpenMemory()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -15,23 +15,15 @@ func TestCreateCheck(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	tx, err := db.Begin()
-	if err != nil {
-		t.Fatal(err)
-	}
 	agent := AgentModel{1, "agent"}
-	if err = tx.SaveAgent(agent.Name, ""); err != nil {
+	if err = db.SaveAgent(agent.Name, ""); err != nil {
 		t.Fatal(err)
 	}
 	check, err := chk.New("http-up", "ns", 3, []byte(`{"host":"example.com"}`))
 	if err != nil {
 		t.Fatal(err)
 	}
-	cm, err := tx.RegisterCheck(agent, check)
-	if err != nil {
-		t.Fatal(err)
-	}
-	err = tx.Commit()
+	cm, err := db.RegisterCheck(agent, check)
 	if err != nil {
 		t.Fatal(err)
 	}

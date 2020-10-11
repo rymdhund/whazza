@@ -79,16 +79,9 @@ func registerAgent(name, tokenHash string) {
 		panic(err)
 	}
 	defer db.Close()
-	tx, err := db.Begin()
+	err = db.SaveAgent(name, tokenHash)
 	if err != nil {
 		panic(err)
-	}
-	err = tx.SaveAgent(name, tokenHash)
-	if err != nil {
-		tx.Rollback()
-		panic(err)
-	} else {
-		tx.Commit()
 	}
 }
 

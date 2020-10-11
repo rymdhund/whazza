@@ -9,6 +9,9 @@ import (
 
 // HumanRelTime compares then with now and gives a human string like "2 hours ago"
 func HumanRelTime(now time.Time, then time.Time, full bool) string {
+	if then == (time.Time{}) {
+		return "never"
+	}
 	var parts []string
 	var text string
 
