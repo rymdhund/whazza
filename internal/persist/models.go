@@ -39,7 +39,7 @@ func (o *CheckOverview) Show() string {
 
 	extra := ""
 	if o.Result.Status == "fail" {
-		extra = fmt.Sprintf(" | %s | last good: %s", o.Result.StatusMsg, utils.HumanRelTime(now, o.LastGood.Timestamp, false))
+		extra = fmt.Sprintf(" | %s | last good: %s", o.Result.Msg, utils.HumanRelTime(now, o.LastGood.Timestamp, false))
 	}
 
 	return fmt.Sprintf("[%s] %s | %s | %s%s",

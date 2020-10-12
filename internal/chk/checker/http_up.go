@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 )
@@ -55,8 +54,7 @@ func (c HttpUpChecker) PortOrDefault() int {
 }
 
 func (c HttpUpChecker) Run() base.Result {
-	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
-	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
+	return httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
 }
 
 ///////////////////
@@ -82,11 +80,10 @@ func (c HttpsUpChecker) PortOrDefault() int {
 }
 
 func (c HttpsUpChecker) Run() base.Result {
-	status, msg := httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, true)
-	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
+	return httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, true)
 }
 
-func httpCheck(host string, port int, statusCodes []int, https bool) (string, string) {
+func httpCheck(host string, port int, statusCodes []int, https bool) base.Result {
 	// Dont follow redirects and allow bad certs
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
@@ -113,7 +110,7 @@ func httpCheck(host string, port int, statusCodes []int, https bool) (string, st
 	resp, err := client.Get(url)
 
 	if err != nil {
-		return "fail", err.Error()
+		return base.FailResult(err.Error())
 	}
 	if statusCodes != nil {
 		contains := false
@@ -123,13 +120,13 @@ func httpCheck(host string, port int, statusCodes []int, https bool) (string, st
 			}
 		}
 		if !contains {
-			return "fail", fmt.Sprintf("Incorrect http status code: %d", resp.StatusCode)
+			return base.FailResult(fmt.Sprintf("Incorrect http status code: %d", resp.StatusCode))
 		}
 	} else {
 		if resp.StatusCode != http.StatusOK {
-			return "fail", fmt.Sprintf("Incorrect http status code: %d", resp.StatusCode)
+			return base.FailResult(fmt.Sprintf("Incorrect http status code: %d", resp.StatusCode))
 		}
 	}
 
-	return "good", ""
+	return base.GoodResult()
 }

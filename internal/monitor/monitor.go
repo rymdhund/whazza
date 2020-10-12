@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
-	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/hubutil"
@@ -71,7 +70,7 @@ func (m *Monitor) CheckForExpired() error {
 		}
 
 		if lastStatus != "expired" {
-			err := m.notify(db, check, base.Result{Status: "expired", Timestamp: time.Now()})
+			err := m.notify(db, check, base.ExpiredResult())
 			if err != nil {
 				return err
 			}
@@ -110,7 +109,7 @@ func (m *Monitor) HandleResult(check persist.CheckModel, res persist.ResultModel
 func (m *Monitor) notify(db *persist.DB, check persist.CheckModel, res base.Result) error {
 	log.Printf("Notification [%s] %+v", res.Status, check)
 	subj := fmt.Sprintf("%s %s", check.Check.Name(), res.Status)
-	body := fmt.Sprintf("%+v\n[%s] - %s", check, res.Status, res.StatusMsg)
+	body := fmt.Sprintf("%+v\n[%s] - %s", check, res.Status, res.Msg)
 
 	if m.cfg.NotifyEmail != "" {
 		mailer, err := m.mkMailer()

@@ -58,17 +58,12 @@ func (c CertChecker) expiresSoonDaysOrDefault() int {
 }
 
 func (c CertChecker) Run() base.Result {
-	status, msg := c.verifyCerts()
-	return base.Result{Status: status, StatusMsg: msg, Timestamp: time.Now()}
-}
-
-func (c CertChecker) verifyCerts() (string, string) {
 	addr := fmt.Sprintf("%s:%d", c.Host, c.portOrDefault())
 	conn, err := tls.Dial("tcp", addr, &tls.Config{
 		InsecureSkipVerify: true,
 	})
 	if err != nil {
-		return "fail", err.Error()
+		return base.FailResult(err.Error())
 	}
 	defer conn.Close()
 
@@ -77,12 +72,12 @@ func (c CertChecker) verifyCerts() (string, string) {
 		if !cert.IsCA {
 			ok, msg := c.verifyCert(cert, time.Now())
 			if ok {
-				return "good", ""
+				return base.GoodResult()
 			}
 			errorMsg = msg
 		}
 	}
-	return "fail", errorMsg
+	return base.FailResult(errorMsg)
 }
 
 func (c CertChecker) verifyCert(crt *x509.Certificate, now time.Time) (bool, string) {

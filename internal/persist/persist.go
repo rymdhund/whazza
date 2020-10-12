@@ -166,7 +166,7 @@ func (db *DB) AddResult(agent AgentModel, check CheckModel, res base.Result) (Re
 		`INSERT INTO results
 		(check_id, status, status_msg, timestamp)
 		VALUES (?, ?, ?, ?)`,
-		check.ID, res.Status, res.StatusMsg, res.Timestamp.Unix())
+		check.ID, res.Status, res.Msg, res.Timestamp.Unix())
 	if err != nil {
 		return ResultModel{}, err
 	}
@@ -249,7 +249,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 	// last res
 	err = db.QueryRow(
 		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? ORDER BY timestamp DESC LIMIT 1", check.ID,
-	).Scan(&lastRes.Status, &lastRes.StatusMsg, &timestamp)
+	).Scan(&lastRes.Status, &lastRes.Msg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
 		// empty result
@@ -262,7 +262,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 	// last good
 	err = db.QueryRow(
 		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'good' ORDER BY timestamp DESC LIMIT 1", check.ID,
-	).Scan(&lastGood.Status, &lastGood.StatusMsg, &timestamp)
+	).Scan(&lastGood.Status, &lastGood.Msg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
 		// empty result
@@ -275,7 +275,7 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 	// last fail
 	err = db.QueryRow(
 		"SELECT status, status_msg, timestamp FROM results WHERE check_id = ? AND status = 'fail' ORDER BY timestamp DESC LIMIT 1", check.ID,
-	).Scan(&lastFail.Status, &lastFail.StatusMsg, &timestamp)
+	).Scan(&lastFail.Status, &lastFail.Msg, &timestamp)
 	switch {
 	case err == sql.ErrNoRows:
 		// empty result
@@ -289,12 +289,12 @@ func (db *DB) GetCheckOverview(check CheckModel) (overview CheckOverview, err er
 	if (lastRes != base.Result{}) {
 		now := time.Now()
 		if check.Check.IsExpired(lastRes.Timestamp, now) {
-			result = base.Result{Status: "expired", Timestamp: now}
+			result = base.ExpiredResult()
 		} else {
 			result = lastRes
 		}
 	} else {
-		result = base.Result{Status: "nodata", Timestamp: time.Now()}
+		result = base.NoDataResult()
 	}
 
 	return CheckOverview{CheckModel: check, Result: result, LastReceived: lastRes, LastGood: lastGood, LastFail: lastFail}, nil
@@ -378,7 +378,7 @@ func (db *DB) GetNewerResults(resultID int) ([]ResultModel, error) {
 	for rows.Next() {
 		var res ResultModel
 		var timestamp int64
-		err := rows.Scan(&res.ID, &res.Status, &res.StatusMsg, &timestamp)
+		err := rows.Scan(&res.ID, &res.Status, &res.Msg, &timestamp)
 		if err != nil {
 			return nil, err
 		}
