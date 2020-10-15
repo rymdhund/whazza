@@ -4,6 +4,8 @@ TODO:
 - Serve webpage for health overview (needs users etc)
 - when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 - Add "error" status for when the checker is not able to run correctly, eg no internet connection etc
+- Add check-in checker to be used from external programs, eg backup that wants to notify that it has run
+- Add dns checker that does whois and sees if domain is about to expire
 
 
 Done
