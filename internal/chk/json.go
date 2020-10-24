@@ -3,8 +3,6 @@ package chk
 import (
 	"encoding/json"
 	"fmt"
-
-	"github.com/rymdhund/whazza/internal/chk/checker"
 )
 
 func (c Check) MarshalJSON() ([]byte, error) {
@@ -50,28 +48,28 @@ func (c *Check) UnmarshalJSON(jsonData []byte) error {
 func unmarshalChecker(typ string, jsonData []byte) (Checker, error) {
 	switch typ {
 	case "nop":
-		var checker checker.NopChecker
+		var checker NopChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
 		}
 		return checker, nil
 	case "http-up":
-		var checker checker.HttpUpChecker
+		var checker HttpUpChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
 		}
 		return checker, nil
 	case "https-up":
-		var checker checker.HttpsUpChecker
+		var checker HttpsUpChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)
 		}
 		return checker, nil
 	case "cert":
-		var checker checker.CertChecker
+		var checker CertChecker
 		err := json.Unmarshal(jsonData, &checker)
 		if err != nil {
 			return nil, fmt.Errorf("Error parsing %s check: %w", typ, err)

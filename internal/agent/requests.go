@@ -79,8 +79,8 @@ func (conn *HubConnection) SendCheckResult(cfg Config, msg messages.CheckResultM
 	if err != nil {
 		return err
 	}
-	defer resp.Body.Close()
-	_, _ = ioutil.ReadAll(resp.Body)
+	io.Copy(ioutil.Discard, resp.Body)
+	resp.Body.Close()
 
 	if err != nil {
 		return err

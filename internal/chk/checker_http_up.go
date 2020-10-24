@@ -1,10 +1,11 @@
-package checker
+package chk
 
 import (
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"net/http"
 
 	"github.com/rymdhund/whazza/internal/base"
@@ -53,8 +54,8 @@ func (c HttpUpChecker) PortOrDefault() int {
 	return c.Port
 }
 
-func (c HttpUpChecker) Run() base.Result {
-	return httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, false)
+func (c HttpUpChecker) Run(ctx *Context) base.Result {
+	return httpCheck(ctx.InsecureHttpTransport, c.Host, c.PortOrDefault(), c.StatusCodes, false)
 }
 
 ///////////////////
@@ -79,19 +80,17 @@ func (c HttpsUpChecker) PortOrDefault() int {
 	return c.Port
 }
 
-func (c HttpsUpChecker) Run() base.Result {
-	return httpCheck(c.Host, c.PortOrDefault(), c.StatusCodes, true)
+func (c HttpsUpChecker) Run(ctx *Context) base.Result {
+	return httpCheck(ctx.InsecureHttpTransport, c.Host, c.PortOrDefault(), c.StatusCodes, true)
 }
 
-func httpCheck(host string, port int, statusCodes []int, https bool) base.Result {
+func httpCheck(transp *http.Transport, host string, port int, statusCodes []int, https bool) base.Result {
 	// Dont follow redirects and allow bad certs
 	client := &http.Client{
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			return http.ErrUseLastResponse
 		},
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
-		},
+		Transport: transp,
 	}
 	var url string
 	if https {
@@ -111,7 +110,8 @@ func httpCheck(host string, port int, statusCodes []int, https bool) base.Result
 	if err != nil {
 		return base.FailResult(err.Error())
 	}
-	defer resp.Body.Close()
+	io.Copy(ioutil.Discard, resp.Body)
+	resp.Body.Close()
 
 	if statusCodes != nil {
 		contains := false

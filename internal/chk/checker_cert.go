@@ -1,4 +1,4 @@
-package checker
+package chk
 
 import (
 	"crypto/tls"
@@ -57,7 +57,7 @@ func (c CertChecker) expiresSoonDaysOrDefault() int {
 	return c.ExpiresSoonDays
 }
 
-func (c CertChecker) Run() base.Result {
+func (c CertChecker) Run(ctx *Context) base.Result {
 	addr := fmt.Sprintf("%s:%d", c.Host, c.portOrDefault())
 	conn, err := tls.Dial("tcp", addr, &tls.Config{})
 	if err != nil {

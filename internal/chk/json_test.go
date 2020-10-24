@@ -3,8 +3,6 @@ package chk
 import (
 	"encoding/json"
 	"testing"
-
-	"github.com/rymdhund/whazza/internal/chk/checker"
 )
 
 func TestUnmarshal(t *testing.T) {
@@ -21,7 +19,7 @@ func TestUnmarshal(t *testing.T) {
 	if check.Interval != 60 {
 		t.Fatalf("Wrong check type: %s", check.Type)
 	}
-	checker, ok := check.Checker.(checker.HttpUpChecker)
+	checker, ok := check.Checker.(HttpUpChecker)
 	if !ok {
 		t.Fatal("Expected HttpUp")
 	}
@@ -37,7 +35,7 @@ func TestMarshal(t *testing.T) {
 			Type:      "http-up",
 			Interval:  10,
 		},
-		Checker: checker.HttpUpChecker{
+		Checker: HttpUpChecker{
 			Host: "example.com",
 		},
 	}
@@ -65,7 +63,7 @@ func TestMarshal(t *testing.T) {
 	if check.Interval != 10 {
 		t.Fatalf("Wrong interval: %d", check.Interval)
 	}
-	checker, ok := check.Checker.(checker.HttpUpChecker)
+	checker, ok := check.Checker.(HttpUpChecker)
 	if !ok {
 		t.Fatal("Expected HttpUp")
 	}

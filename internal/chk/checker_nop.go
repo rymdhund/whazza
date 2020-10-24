@@ -1,4 +1,4 @@
-package checker
+package chk
 
 import (
 	"encoding/json"
@@ -31,6 +31,6 @@ func (c NopChecker) AsJson() []byte {
 	return b
 }
 
-func (c NopChecker) Run() base.Result {
+func (c NopChecker) Run(ctx *Context) base.Result {
 	return base.GoodResult()
 }

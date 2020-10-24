@@ -60,6 +60,7 @@ func run() {
 	f.Close()
 
 	hubConn := agent.NewHubConnection(cfg)
+	checkContext := chk.NewContext()
 
 	pq := make(PriorityQueue, len(checks))
 	for i, c := range checks {
@@ -81,7 +82,7 @@ func run() {
 		fmt.Printf("running check %+v\n", next.check)
 
 		go func() {
-			res := next.check.Checker.Run()
+			res := next.check.Checker.Run(checkContext)
 			checkResult := messages.NewCheckResultMsg(next.check, res)
 			err = hubConn.SendCheckResult(cfg, checkResult)
 			if err != nil {

@@ -2,11 +2,25 @@ package chk
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
+	"net/http"
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 )
+
+type Context struct {
+	InsecureHttpTransport *http.Transport
+}
+
+func NewContext() *Context {
+	return &Context{
+		InsecureHttpTransport: &http.Transport{
+			TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		},
+	}
+}
 
 type Check struct {
 	checkBase
@@ -22,7 +36,7 @@ type checkBase struct {
 type Checker interface {
 	Type() string
 	Title() string
-	Run() base.Result
+	Run(ctx *Context) base.Result
 	Validate() error
 	AsJson() []byte
 }
