@@ -5,6 +5,7 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"net/http"
 
@@ -12,29 +13,49 @@ import (
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
-func Ping(cfg Config) error {
-	client := tofu.HttpClient(cfg.ServerCertFingerprint)
+type HubConnection struct {
+	client *http.Client
+	cfg    Config
+}
 
-	url := fmt.Sprintf("https://%s:%d/agent/ping", cfg.ServerHost, cfg.ServerPort)
-	req, err := http.NewRequest("GET", url, nil)
-	req.SetBasicAuth(cfg.AgentName, cfg.AgentToken)
-	resp, err := client.Do(req)
+func NewHubConnection(cfg Config) *HubConnection {
+	client := tofu.HttpClient(cfg.ServerCertFingerprint)
+	return &HubConnection{
+		client: client,
+		cfg:    cfg,
+	}
+}
+
+func (conn *HubConnection) request(method, path string, body io.Reader) (*http.Response, error) {
+	url := fmt.Sprintf("https://%s:%d%s", conn.cfg.ServerHost, conn.cfg.ServerPort, path)
+	req, err := http.NewRequest(method, url, body)
+	if err != nil {
+		panic(err) // we will only get err if url is malformed or invalid method
+	}
+	req.SetBasicAuth(conn.cfg.AgentName, conn.cfg.AgentToken)
+	return conn.client.Do(req)
+}
+
+func (conn *HubConnection) Ping() error {
+	resp, err := conn.request("GET", "/agent/ping", nil)
 
 	if err != nil {
 		return err
 	}
+	defer resp.Body.Close()
+
+	body, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return err
+	}
+
 	if resp.StatusCode == http.StatusOK {
-		defer resp.Body.Close()
-		body, err := ioutil.ReadAll(resp.Body)
-		if err != nil {
-			return err
-		}
 		if string(body) != "pong" {
-			fmt.Errorf("Unexpected response: '%s'", body)
+			return fmt.Errorf("Unexpected response: '%s'", body)
 		}
 		return nil
 	} else if resp.StatusCode == http.StatusForbidden {
-		hash := sha256.Sum256([]byte(cfg.AgentToken))
+		hash := sha256.Sum256([]byte(conn.cfg.AgentToken))
 
 		hexified := make([][]byte, len(hash))
 		for i, data := range hash {
@@ -42,30 +63,31 @@ func Ping(cfg Config) error {
 		}
 		hashString := string(bytes.Join(hexified, nil))
 
-		return fmt.Errorf("Not authorized. Run `whazza register %s %s` on the server to register this agent.", cfg.AgentName, hashString)
+		return fmt.Errorf("Not authorized. Run `whazza register %s %s` on the server to register this agent.", conn.cfg.AgentName, hashString)
 	} else {
 		return fmt.Errorf("Invalid status: %d", resp.StatusCode)
 	}
 }
 
-func SendCheckResult(cfg Config, msg messages.CheckResultMsg) error {
-	client := tofu.HttpClient(cfg.ServerCertFingerprint)
-
-	url := fmt.Sprintf("https://%s:%d/agent/result", cfg.ServerHost, cfg.ServerPort)
+func (conn *HubConnection) SendCheckResult(cfg Config, msg messages.CheckResultMsg) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return err
 	}
-	req, err := http.NewRequest("POST", url, bytes.NewReader(payload))
-	req.SetBasicAuth(cfg.AgentName, cfg.AgentToken)
-	resp, err := client.Do(req)
+
+	resp, err := conn.request("POST", "/agent/result", bytes.NewReader(payload))
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	_, _ = ioutil.ReadAll(resp.Body)
 
 	if err != nil {
 		return err
 	}
-	if resp.StatusCode == http.StatusOK {
-		return nil
-	} else {
+
+	if resp.StatusCode != http.StatusOK {
 		return fmt.Errorf("Unexpected status: %d", resp.StatusCode)
 	}
+	return nil
 }

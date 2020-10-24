@@ -17,7 +17,7 @@ type CertChecker struct {
 	ExpiresSoonDays int    `json:"expires_soon_days,omitempty"`
 }
 
-func (c CertChecker) Name() string {
+func (c CertChecker) Title() string {
 	if c.portOrDefault() != 443 {
 		return fmt.Sprintf("cert:%s:%d", c.Host, c.portOrDefault())
 	}

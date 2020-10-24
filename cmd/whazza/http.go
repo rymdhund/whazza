@@ -91,7 +91,7 @@ func resultHandler(w http.ResponseWriter, r *http.Request, agent persist.AgentMo
 			http.Error(w, "400 Bad Request. Invalid data", http.StatusBadRequest)
 			return
 		}
-		fmt.Printf("Got check result: %s - %s\n", checkResult.Check.Name(), checkResult.Result.Status)
+		fmt.Printf("Got check result: %s - %s\n", checkResult.Check.Title(), checkResult.Result.Status)
 		ok, e := checkResult.Validate()
 		if !ok {
 			log.Printf("Invalid checkresult: %s", e)

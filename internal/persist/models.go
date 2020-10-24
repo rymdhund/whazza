@@ -45,7 +45,7 @@ func (o *CheckOverview) Show() string {
 	return fmt.Sprintf("[%s] %s | %s | %s%s",
 		o.CheckModel.Check.Namespace,
 		o.Result.Status,
-		o.CheckModel.Check.Name(),
+		o.CheckModel.Check.Title(),
 		utils.HumanRelTime(now, o.LastReceived.Timestamp, false),
 		extra,
 	)

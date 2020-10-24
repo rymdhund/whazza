@@ -4,10 +4,12 @@ import (
 	"bytes"
 	"crypto/sha256"
 	"crypto/tls"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"net"
 	"net/http"
+	"strings"
 	"time"
 )
 
@@ -19,6 +21,7 @@ var (
 )
 
 func HttpClient(fingerprint string) *http.Client {
+	fpBytes := fingerprintBytes(fingerprint)
 	dial := func(network, addr string) (net.Conn, error) {
 		config := &tls.Config{
 			InsecureSkipVerify: true,
@@ -32,10 +35,11 @@ func HttpClient(fingerprint string) *http.Client {
 		state := conn.ConnectionState()
 		now := time.Now()
 		if len(state.PeerCertificates) != 1 {
+			conn.Close()
 			return nil, ErrBadNumberOfCerts
 		}
 		cert := state.PeerCertificates[0]
-		if fingerprint != getFingerprint(cert.Raw) {
+		if !compareFingerprint(cert.Raw, fpBytes) {
 			conn.Close()
 			fmt.Printf("expected: %s\n", fingerprint)
 			fmt.Printf("got: %s\n", getFingerprint(cert.Raw))
@@ -68,6 +72,19 @@ func getFingerprint(der []byte) string {
 	return string(bytes.Join(hexified, []byte(":")))
 }
 
+func fingerprintBytes(fp string) []byte {
+	res, err := hex.DecodeString(strings.ReplaceAll(fp, ":", ""))
+	if err != nil {
+		panic(err)
+	}
+	return res
+}
+
+func compareFingerprint(der []byte, fp []byte) bool {
+	hash := sha256.Sum256(der)
+	return bytes.Compare(hash[:], fp) == 0
+}
+
 func FetchFingerprint(server string, port int) (string, error) {
 	addr := fmt.Sprintf("%s:%d", server, port)
 
@@ -78,6 +95,7 @@ func FetchFingerprint(server string, port int) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	defer conn.Close()
 	state := conn.ConnectionState()
 
 	if len(state.PeerCertificates) != 1 {

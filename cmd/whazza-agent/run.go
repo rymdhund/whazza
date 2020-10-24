@@ -51,11 +51,15 @@ func run() {
 		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
 		os.Exit(1)
 	}
+
 	checks, err := agent.ParseChecksConfig(f)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Error reading checks.json file: %s\n", err)
 		os.Exit(1)
 	}
+	f.Close()
+
+	hubConn := agent.NewHubConnection(cfg)
 
 	pq := make(PriorityQueue, len(checks))
 	for i, c := range checks {
@@ -79,9 +83,9 @@ func run() {
 		go func() {
 			res := next.check.Checker.Run()
 			checkResult := messages.NewCheckResultMsg(next.check, res)
-			err = agent.SendCheckResult(cfg, checkResult)
+			err = hubConn.SendCheckResult(cfg, checkResult)
 			if err != nil {
-				log.Printf("Error: couldn't send result: %s", err)
+				log.Printf("Error: couldn't send result: %s\n", err)
 				// TODO: Try again
 			}
 		}()

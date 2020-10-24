@@ -21,7 +21,7 @@ type checkBase struct {
 
 type Checker interface {
 	Type() string
-	Name() string
+	Title() string
 	Run() base.Result
 	Validate() error
 	AsJson() []byte
@@ -34,8 +34,8 @@ func (c Check) Validate() error {
 	return c.Checker.Validate()
 }
 
-func (c Check) Name() string {
-	return c.Checker.Name()
+func (c Check) Title() string {
+	return c.Checker.Title()
 }
 
 // IsExpired returns true if the check is expired

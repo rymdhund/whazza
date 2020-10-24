@@ -20,7 +20,7 @@ type HttpsUpChecker struct {
 	HttpUpChecker
 }
 
-func (c HttpUpChecker) Name() string {
+func (c HttpUpChecker) Title() string {
 	if c.PortOrDefault() != 80 {
 		return fmt.Sprintf("http:%s:%d", c.Host, c.PortOrDefault())
 	}
@@ -65,7 +65,7 @@ func (c HttpsUpChecker) Type() string {
 	return "https-up"
 }
 
-func (c HttpsUpChecker) Name() string {
+func (c HttpsUpChecker) Title() string {
 	if c.PortOrDefault() != 443 {
 		return fmt.Sprintf("https:%s:%d", c.Host, c.PortOrDefault())
 	}
@@ -108,10 +108,11 @@ func httpCheck(host string, port int, statusCodes []int, https bool) base.Result
 		}
 	}
 	resp, err := client.Get(url)
-
 	if err != nil {
 		return base.FailResult(err.Error())
 	}
+	defer resp.Body.Close()
+
 	if statusCodes != nil {
 		contains := false
 		for _, c := range statusCodes {
