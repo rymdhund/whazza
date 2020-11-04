@@ -89,8 +89,12 @@ func readConf() agent.Config {
 
 func ping() {
 	cfg := readConf()
-	hubConn := agent.NewHubConnection(cfg)
-	err := hubConn.Ping()
+	hubConn, err := agent.NewHubConnection(cfg)
+	if err != nil {
+		fmt.Printf("Error connecting to server: %s\n", err)
+		os.Exit(1)
+	}
+	err = hubConn.Ping()
 	if err != nil {
 		fmt.Printf("Error pinging server: %s\n", err)
 		os.Exit(1)

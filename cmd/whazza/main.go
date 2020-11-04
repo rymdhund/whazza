@@ -7,6 +7,7 @@ import (
 
 	"github.com/rymdhund/whazza/internal/hubutil"
 	"github.com/rymdhund/whazza/internal/persist"
+	"github.com/rymdhund/whazza/internal/tofu"
 )
 
 // Config is  the global configuration object. Initialized by initConf() function
@@ -66,11 +67,11 @@ func showFingerprint() {
 		panic(err)
 	}
 
-	fp, err := hubutil.ReadCertFingerprint(Config.CertFile())
+	fp, err := tofu.FingerprintOfCertFile(Config.CertFile())
 	if err != nil {
 		panic(err)
 	}
-	fmt.Printf("Cert fingerprint: %s\n", fp)
+	fmt.Printf("Cert fingerprint: %s\n", fp.Encode())
 }
 
 func registerAgent(name, tokenHash string) {

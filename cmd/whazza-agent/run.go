@@ -59,7 +59,11 @@ func run() {
 	}
 	f.Close()
 
-	hubConn := agent.NewHubConnection(cfg)
+	hubConn, err := agent.NewHubConnection(cfg)
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "Error creating connection to hub: %s\n", err)
+		os.Exit(1)
+	}
 	checkContext := chk.NewContext()
 
 	pq := make(PriorityQueue, len(checks))

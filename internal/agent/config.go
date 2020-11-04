@@ -25,9 +25,15 @@ type Config struct {
 
 func GenerateConfig(agentName string, serverHost string, serverPort int, serverFingerprint string) (Config, error) {
 	var err error
+	var fingerprint tofu.Fingerprint
 
-	if serverFingerprint == "" {
-		serverFingerprint, err = tofu.FetchFingerprint(serverHost, serverPort)
+	if serverFingerprint != "" {
+		fingerprint, err = tofu.FingerprintOfString(serverFingerprint)
+		if err != nil {
+			return Config{}, fmt.Errorf("Invalid fingerprint %w", err)
+		}
+	} else {
+		fingerprint, err = tofu.FingerprintOfServer(serverHost, serverPort)
 		if err != nil {
 			return Config{}, errors.New("Could not connect to server, please manually provide a certificate fingerprint")
 		}
@@ -43,7 +49,7 @@ func GenerateConfig(agentName string, serverHost string, serverPort int, serverF
 	return Config{
 		ServerHost:            serverHost,
 		ServerPort:            serverPort,
-		ServerCertFingerprint: serverFingerprint,
+		ServerCertFingerprint: fingerprint.Encode(),
 		AgentName:             agentName,
 		AgentToken:            agentToken,
 	}, nil

@@ -1,16 +1,12 @@
 package hubutil
 
 import (
-	"bytes"
 	"crypto/ed25519"
 	"crypto/rand"
-	"crypto/sha256"
 	"crypto/x509"
 	"crypto/x509/pkix"
 	"encoding/pem"
-	"errors"
 	"fmt"
-	"io/ioutil"
 	"log"
 	"math/big"
 	"os"
@@ -85,24 +81,4 @@ func InitCert(keyFile, certFile string) error {
 	log.Print("wrote key.pem\n")
 
 	return nil
-}
-
-func ReadCertFingerprint(certFile string) (string, error) {
-	dat, err := ioutil.ReadFile(certFile)
-	if err != nil {
-		return "", err
-	}
-
-	block, _ := pem.Decode(dat)
-	if block == nil || block.Type != "CERTIFICATE" {
-		fmt.Printf("block: %+v\ntype: %+v\n", block, block.Type)
-		return "", errors.New("Invalid cert")
-	}
-
-	hash := sha256.Sum256(block.Bytes)
-	hexified := make([][]byte, len(hash))
-	for i, data := range hash {
-		hexified[i] = []byte(fmt.Sprintf("%02X", data))
-	}
-	return string(bytes.Join(hexified, []byte(":"))), nil
 }

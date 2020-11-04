@@ -18,12 +18,16 @@ type HubConnection struct {
 	cfg    Config
 }
 
-func NewHubConnection(cfg Config) *HubConnection {
-	client := tofu.HttpClient(cfg.ServerCertFingerprint)
+func NewHubConnection(cfg Config) (*HubConnection, error) {
+	fp, err := tofu.FingerprintOfString(cfg.ServerCertFingerprint)
+	if err != nil {
+		return nil, err
+	}
+	client := tofu.HttpClient(fp)
 	return &HubConnection{
 		client: client,
 		cfg:    cfg,
-	}
+	}, nil
 }
 
 func (conn *HubConnection) request(method, path string, body io.Reader) (*http.Response, error) {
