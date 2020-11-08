@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/smtp"
+	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/hubutil"
@@ -12,7 +13,8 @@ import (
 )
 
 type Monitor struct {
-	cfg hubutil.HubConfig
+	cfg          hubutil.HubConfig
+	hubStartTime time.Time
 }
 
 type Mailer struct {
@@ -23,8 +25,8 @@ type Mailer struct {
 	from     string
 }
 
-func New(cfg hubutil.HubConfig) *Monitor {
-	return &Monitor{cfg}
+func New(cfg hubutil.HubConfig, hubStartTime time.Time) *Monitor {
+	return &Monitor{cfg, hubStartTime}
 }
 
 func (m *Monitor) mkMailer() (Mailer, error) {
@@ -59,11 +61,12 @@ func (m *Monitor) CheckForExpired() error {
 	}
 	defer db.Close()
 
-	expChecks, err := db.GetExpiredChecks()
+	expChecks, err := getExpiredChecks(db, m.hubStartTime)
 	if err != nil {
 		return err
 	}
 	for _, check := range expChecks {
+
 		lastStatus, err := db.LastNotification(check.ID)
 		if err != nil {
 			return err
@@ -141,4 +144,33 @@ func (m Mailer) sendMail(to, subject, body string) error {
 		return fmt.Errorf("sendMail: failed with %w", err)
 	}
 	return nil
+}
+
+func maxTime(t1 time.Time, t2 time.Time) time.Time {
+	if t1.After(t2) {
+		return t1
+	} else {
+		return t2
+	}
+}
+
+func getExpiredChecks(db *persist.DB, hubStart time.Time) ([]persist.CheckModel, error) {
+	overviews, err := db.GetCheckOverviews()
+	if err != nil {
+		return nil, err
+	}
+
+	expired := []persist.CheckModel{}
+	for _, ov := range overviews {
+		if ov.Result.Status == "expired" {
+			// If the server is newly started we give checks a chance to report in
+			// Do this by pretending we got a result right before the hub started
+			t := maxTime(ov.LastReceived.Timestamp, hubStart)
+			if ov.CheckModel.Check.IsExpired(t, time.Now()) {
+				expired = append(expired, ov.CheckModel)
+			}
+		}
+	}
+
+	return expired, nil
 }

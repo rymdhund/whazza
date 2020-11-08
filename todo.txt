@@ -2,7 +2,6 @@ TODO:
 - Agent should fetch last run for checks from hub
 - Use env WHAZZA_DATA_DIR for hub generated key, cert and db files
 - Serve webpage for health overview (needs users etc)
-- when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 - Add "error" status for when the checker is not able to run correctly, eg no internet connection etc
 - Add check-in checker to be used from external programs, eg backup that wants to notify that it has run
 - Add dns checker that does whois and sees if domain is about to expire
@@ -12,6 +11,7 @@ TODO:
 
 
 Done
+- when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 - Switch to curl style pinned key. Then I only need one implementation.
 - cert-check to see that cert is good and doesnt expire in $n days
 - Make constructor for result, one for Good, one for Fail

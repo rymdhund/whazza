@@ -348,22 +348,6 @@ func (db *DB) GetCheckById(ID int) (CheckModel, error) {
 	return c, nil
 }
 
-func (db *DB) GetExpiredChecks() ([]CheckModel, error) {
-	overviews, err := db.GetCheckOverviews()
-	if err != nil {
-		return nil, err
-	}
-
-	expired := []CheckModel{}
-	for _, ov := range overviews {
-		if ov.Result.Status == "expired" {
-			expired = append(expired, ov.CheckModel)
-		}
-	}
-
-	return expired, nil
-}
-
 func (db *DB) GetNewerResults(resultID int) ([]ResultModel, error) {
 	rows, err := db.Query(
 		"SELECT id, status, status_msg, timestamp FROM results WHERE id > ?", resultID,

@@ -35,7 +35,7 @@ func startServer() {
 	}
 	db.Close()
 
-	mon := monitor.New(Config)
+	mon := monitor.New(Config, time.Now())
 
 	go func() {
 		for {
