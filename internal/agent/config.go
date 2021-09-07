@@ -1,17 +1,16 @@
 package agent
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
-	"math/big"
 	"os"
 	"path"
 
 	"github.com/rymdhund/whazza/internal/chk"
+	"github.com/rymdhund/whazza/internal/sectoken"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -41,7 +40,7 @@ func GenerateConfig(agentName string, serverHost string, serverPort int, serverF
 		fmt.Printf("Verify that it is correct on server by 'whazza fingerprint'\n")
 	}
 
-	agentToken, err := generateToken()
+	agentToken := sectoken.New()
 	if err != nil {
 		return Config{}, err
 	}
@@ -51,7 +50,7 @@ func GenerateConfig(agentName string, serverHost string, serverPort int, serverF
 		ServerPort:            serverPort,
 		ServerCertFingerprint: fingerprint.Encode(),
 		AgentName:             agentName,
-		AgentToken:            agentToken,
+		AgentToken:            agentToken.String(),
 	}, nil
 }
 
@@ -94,23 +93,6 @@ func ReadConfig(filename string) (Config, error) {
 		return Config{}, err
 	}
 	return cfg, nil
-}
-
-func generateToken() (string, error) {
-	var symbols = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789")
-	const n = 64
-
-	key := make([]rune, n)
-	r := rand.Reader
-	sl := big.NewInt(int64(len(symbols)))
-	for i := range key {
-		v, err := rand.Int(r, sl)
-		if err != nil {
-			return "", err
-		}
-		key[i] = symbols[v.Int64()]
-	}
-	return string(key), nil
 }
 
 func ParseChecksConfig(input io.Reader) ([]chk.Check, error) {

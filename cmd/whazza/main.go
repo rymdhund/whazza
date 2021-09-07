@@ -7,6 +7,7 @@ import (
 
 	"github.com/rymdhund/whazza/internal/hubutil"
 	"github.com/rymdhund/whazza/internal/persist"
+	"github.com/rymdhund/whazza/internal/sectoken"
 	"github.com/rymdhund/whazza/internal/tofu"
 )
 
@@ -30,6 +31,22 @@ func main() {
 	} else if args[1] == "show" && len(args) == 2 {
 		initConf()
 		show()
+	} else if args[1] == "register-external" && len(args) == 3 {
+		initConf()
+
+		token := sectoken.New()
+		name := args[2]
+		registerAgent(name, token.Hash())
+
+		fingerprint, err := tofu.FingerprintOfCertFile(Config.CertFile())
+		if err != nil {
+			fmt.Printf("Couldn't get fingerprint: %s\n", err)
+			os.Exit(1)
+		}
+		fmt.Printf("Generated new agent\n")
+		fmt.Printf("Name: %s\n", name)
+		fmt.Printf("Token: %s\n", token)
+		fmt.Printf("curl --insecure --pinnedpubkey 'sha256//%s' https://%s:%s@localhost:%d/agent/result\n", fingerprint.Encode(), name, token.Hash(), Config.Port)
 	} else {
 		showUsage()
 		os.Exit(1)
@@ -39,10 +56,11 @@ func main() {
 func showUsage() {
 	fmt.Printf(`usage: %s <command> [<args>]
 Where command is one of the following:
-  run                            Start the server
-  fingerprint                    Show the certificate fingerprint
-  register <agent> <token hash>  Register the agent with a hashed token
-  show                           Show status of checks
+  run                               Start the server
+  fingerprint                       Show the certificate fingerprint
+  register <agent> <token hash>     Register the agent with a hashed token
+  register-external <name>          Register a new external agent and generate a token
+  show                              Show status of checks
 `, os.Args[0])
 }
 

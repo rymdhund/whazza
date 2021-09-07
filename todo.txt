@@ -7,6 +7,8 @@ TODO:
 - Add dns checker that does whois and sees if domain is about to expire
 - Add command in server on how to make a curl command with --pinnedpubkey to do a check-in
 - Getting this error in http and cert checks: dial tcp: lookup www.foo.com on 127.0.0.11:53: read udp 127.0.0.1:43945->127.0.0.11:53: i/o timeout. Maybe try again if we have dns lookup problem?
+- Debian check for needs-restart, security updates, something more?
+- Rename server to hub everywhere
 
 
 
