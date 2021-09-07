@@ -9,6 +9,7 @@ import (
 
 type HubConfig struct {
 	DataDir string `json:"data_dir"`
+	Port    int    `json:"port"`
 	// Mail settings
 	NotifyEmail  string `json:"notify_email"`
 	SMTPHost     string `json:"smtp_host"`
@@ -44,6 +45,9 @@ func ReadConfig(filename string) (HubConfig, error) {
 
 	if cfg.DataDir == "" {
 		cfg.DataDir = path.Join(os.Getenv("HOME"), ".whazza")
+	}
+	if cfg.Port == 0 {
+		cfg.Port = 4433
 	}
 	return cfg, nil
 }

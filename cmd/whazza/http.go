@@ -51,7 +51,7 @@ func startServer() {
 	http.HandleFunc("/agent/ping", basicAuth(pingHandler))
 	http.HandleFunc("/agent/result", basicAuth(mkResultHandler(mon)))
 
-	addr := ":4433"
+	addr := fmt.Sprintf(":%d", Config.Port)
 
 	log.Printf("listening on %s", addr)
 
