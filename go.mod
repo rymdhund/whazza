@@ -1,5 +1,5 @@
 module github.com/rymdhund/whazza
 
-go 1.12
+go 1.19
 
-require github.com/mattn/go-sqlite3 v2.0.3+incompatible
+require github.com/mattn/go-sqlite3 v1.14.16
