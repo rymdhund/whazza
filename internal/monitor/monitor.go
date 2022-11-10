@@ -12,6 +12,9 @@ import (
 	"github.com/rymdhund/whazza/internal/persist"
 )
 
+/**
+ * Monitor the checks for timeouts
+ */
 type Monitor struct {
 	cfg          hubutil.HubConfig
 	hubStartTime time.Time

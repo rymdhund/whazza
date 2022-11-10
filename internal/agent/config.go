@@ -36,7 +36,7 @@ func GenerateConfig(agentName string, serverHost string, serverPort int, serverF
 		if err != nil {
 			return Config{}, errors.New("Could not connect to server, please manually provide a certificate fingerprint")
 		}
-		fmt.Printf("Fetched fingerprint from server: %s\n", serverFingerprint)
+		fmt.Printf("Fetched fingerprint from server: '%s'\n", fingerprint)
 		fmt.Printf("Verify that it is correct on server by 'whazza fingerprint'\n")
 	}
 
