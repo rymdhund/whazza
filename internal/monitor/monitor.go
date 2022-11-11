@@ -3,18 +3,16 @@ package monitor
 import (
 	"errors"
 	"fmt"
-	"log"
 	"net/smtp"
 	"time"
 
 	"github.com/rymdhund/whazza/internal/base"
 	"github.com/rymdhund/whazza/internal/hubutil"
+	. "github.com/rymdhund/whazza/internal/logging"
 	"github.com/rymdhund/whazza/internal/persist"
 )
 
-/**
- * Monitor the checks for timeouts
- */
+// Monitor the checks for timeouts
 type Monitor struct {
 	cfg          hubutil.HubConfig
 	hubStartTime time.Time
@@ -113,14 +111,14 @@ func (m *Monitor) HandleResult(check persist.CheckModel, res persist.ResultModel
 }
 
 func (m *Monitor) notify(db *persist.DB, check persist.CheckModel, res base.Result) error {
-	log.Printf("Notification [%s] %+v", res.Status, check)
+	InfoLog.Printf("Notification [%s] %+v", res.Status, check)
 	subj := fmt.Sprintf("%s %s", check.Check.Title(), res.Status)
 	body := fmt.Sprintf("%+v\n[%s] - %s", check, res.Status, res.Msg)
 
 	if m.cfg.NotifyEmail != "" {
 		mailer, err := m.mkMailer()
 		if err != nil {
-			log.Printf("Not sending mail since: %s", err)
+			WarningLog.Printf("Not sending mail since: %s", err)
 		} else {
 			err := mailer.sendMail(m.cfg.NotifyEmail, subj, body)
 			if err != nil {
@@ -133,7 +131,7 @@ func (m *Monitor) notify(db *persist.DB, check persist.CheckModel, res base.Resu
 }
 
 func (m Mailer) sendMail(to, subject, body string) error {
-	log.Printf("Sending notification email to %s", to)
+	DebugLog.Printf("Sending notification email to %s", to)
 	auth := smtp.PlainAuth("", m.user, m.password, m.host)
 	addr := fmt.Sprintf("%s:%d", m.host, m.port)
 
