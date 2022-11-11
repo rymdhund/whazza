@@ -2,10 +2,12 @@ package main
 
 import (
 	"fmt"
+	"log"
 	"os"
 	"path"
 
 	"github.com/rymdhund/whazza/internal/hubutil"
+	. "github.com/rymdhund/whazza/internal/logging"
 	"github.com/rymdhund/whazza/internal/persist"
 	"github.com/rymdhund/whazza/internal/sectoken"
 	"github.com/rymdhund/whazza/internal/tofu"
@@ -15,6 +17,11 @@ import (
 var Config hubutil.HubConfig
 
 func main() {
+	DebugLog = log.New(os.Stdout, "Debug: ", 0)
+	InfoLog = log.New(os.Stdout, "Info: ", 0)
+	WarningLog = log.New(os.Stdout, "Warning: ", 0)
+	ErrorLog = log.New(os.Stdout, "Error: ", 0)
+
 	args := os.Args
 
 	if len(args) <= 1 {

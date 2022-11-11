@@ -9,6 +9,7 @@ import (
 
 	"github.com/rymdhund/whazza/internal/agent"
 	"github.com/rymdhund/whazza/internal/chk"
+	. "github.com/rymdhund/whazza/internal/logging"
 	"github.com/rymdhund/whazza/internal/messages"
 )
 
@@ -45,6 +46,11 @@ func (pq *PriorityQueue) Pop() interface{} {
 }
 
 func run() {
+	DebugLog = log.New(os.Stdout, "DEBUG: ", log.Ldate|log.Ltime|log.Lshortfile)
+	InfoLog = log.New(os.Stdout, "INFO: ", log.Ldate|log.Ltime|log.Lshortfile)
+	WarningLog = log.New(os.Stdout, "WARNING: ", log.Ldate|log.Ltime|log.Lshortfile)
+	ErrorLog = log.New(os.Stdout, "ERROR: ", log.Ldate|log.Ltime|log.Lshortfile)
+
 	cfg := readConf()
 	f, err := os.Open(checksConfigFile())
 	if err != nil {
@@ -73,8 +79,7 @@ func run() {
 	heap.Init(&pq)
 
 	if len(pq) < 1 {
-		fmt.Printf("No checks to run")
-		os.Exit(0)
+		ErrorLog.Fatalf("No checks to run")
 	}
 
 	for {
@@ -83,14 +88,14 @@ func run() {
 		// Sleep until next check is due
 		time.Sleep(next.time.Sub(time.Now()))
 
-		fmt.Printf("running check %+v\n", next.check)
+		DebugLog.Printf("running check %+v\n", next.check)
 
 		go func() {
 			res := next.check.Checker.Run(checkContext)
 			checkResult := messages.NewCheckResultMsg(next.check, res)
 			err = hubConn.SendCheckResult(cfg, checkResult)
 			if err != nil {
-				log.Printf("Error: couldn't send result: %s\n", err)
+				ErrorLog.Printf("Couldn't send result: %s\n", err)
 				// TODO: Try again
 			}
 		}()
