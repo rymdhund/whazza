@@ -1,4 +1,4 @@
-FROM golang:1.14.4
+FROM golang:1.19
 WORKDIR /go/src/github.com/rymdhund/whazza/
 COPY ./ .
 RUN rm -rf build && \
