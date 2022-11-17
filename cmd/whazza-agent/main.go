@@ -14,6 +14,7 @@ func main() {
 
 	if len(args) <= 1 {
 		ShowUsage()
+		os.Exit(1)
 	} else if args[1] == "init" {
 		initArgs := args[2:]
 		if len(initArgs) >= 3 && len(initArgs) <= 4 {
