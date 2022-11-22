@@ -36,8 +36,8 @@ func GenerateConfig(agentName string, serverHost string, serverPort int, serverF
 		if err != nil {
 			return Config{}, errors.New("Could not connect to server, please manually provide a certificate fingerprint")
 		}
-		fmt.Printf("Fetched fingerprint from server: '%s'\n", fingerprint)
-		fmt.Printf("Verify that it is correct on server by 'whazza fingerprint'\n")
+		fmt.Printf("Fetched fingerprint from server: '%s'\n", fingerprint.Encode())
+		fmt.Printf("Verify that it matches the server fingerprint by running 'whazza fingerprint' on server\n")
 	}
 
 	agentToken := sectoken.New()
