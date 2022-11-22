@@ -3,7 +3,6 @@ TODO:
 - Use env WHAZZA_DATA_DIR for hub generated key, cert and db files
 - Serve webpage for health overview (needs users etc)
 - Add "error" status for when the checker is not able to run correctly, eg no internet connection etc
-- Add check-in checker to be used from external programs, eg backup that wants to notify that it has run
 - Add dns checker that does whois and sees if domain is about to expire
 - Add command in server on how to make a curl command with --pinnedpubkey to do a check-in
 - Getting this error in http and cert checks: dial tcp: lookup www.foo.com on 127.0.0.11:53: read udp 127.0.0.1:43945->127.0.0.11:53: i/o timeout. Maybe try again if we have dns lookup problem?
@@ -15,6 +14,7 @@ TODO:
 
 
 Done
+- Add check-in checker to be used from external programs, eg backup that wants to notify that it has run
 - Error saving checkresult: Couldn't add result: database table is locked: results
 - when server starts, wait until checks have had a chance to send their results before counting checks as expired. (pretend last received result is the server start time)
 - Switch to curl style pinned key. Then I only need one implementation.
