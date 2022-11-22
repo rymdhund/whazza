@@ -21,7 +21,7 @@ type Tx struct {
 
 // Open returns a DB reference for a data source.
 func Open(filename string) (*DB, error) {
-	connString := fmt.Sprintf("file:%s?_busy_timeout=10000&cache=shared&mode=rwc&_journal_mode=WAL", filename)
+	connString := fmt.Sprintf("file:%s?_busy_timeout=10000&mode=rwc&_journal_mode=WAL", filename)
 	db, err := sql.Open("sqlite3", connString)
 	if err != nil {
 		return nil, err
